@@ -34,6 +34,7 @@ blindfold-chess/
 - ✅ GitHub 仓库已创建并连接
 - ✅ 基础文件已推送（.gitignore、README、index.html、备忘录、AGENTS）
 - ✅ `index.html` 只有一个深色主题的占位页面
+- ✅ Git 同步与状态恢复机制已验证（2026-05-15）
 - ⬜ 等待用户确定具体功能和交互设计
 
 ## 开发方式
