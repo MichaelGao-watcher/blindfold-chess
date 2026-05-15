@@ -495,8 +495,8 @@
 
             async init() {
                 if (this.initPromise) return this.initPromise;
-                const workerUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.js';
-                const wasmUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.wasm';
+                const workerUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite-single.js';
+                const wasmUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite-single.wasm';
                 
                 this.initPromise = new Promise(async (resolve, reject) => {
                     try {
