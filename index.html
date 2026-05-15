@@ -635,9 +635,17 @@
             }
         }
 
+        function normalizeMove(input) {
+            const s = input.trim();
+            if (/^0-0-0$/i.test(s) || /^o-o-o$/i.test(s)) return 'O-O-O';
+            if (/^0-0$/i.test(s) || /^o-o$/i.test(s)) return 'O-O';
+            return s.replace(/[a-h]/gi, m => m.toLowerCase())
+                    .replace(/[nbrqk]/gi, m => m.toUpperCase());
+        }
+
         function submitMove() {
             const input = document.getElementById('moveInput');
-            const san = input.value.trim();
+            const san = normalizeMove(input.value);
             if (!san) return;
 
             const move = game.move(san);
