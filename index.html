@@ -295,6 +295,10 @@
                 <div class="mode-title">Coordinate Practice</div>
                 <div class="mode-desc">Train your board vision by identifying squares and calling out coordinates.</div>
             </div>
+            <div class="mode-card" onclick="showGuide()">
+                <div class="mode-title">Wait. I don't even know how…</div>
+                <div class="mode-desc">it's fine. Try this</div>
+            </div>
         </div>
         <div class="footer">Tap a mode to begin</div>
     </div>
@@ -329,6 +333,61 @@
             </div>
         </div>
         <div class="engine-note">Stockfish engine loaded locally.<br>Select a level to start playing.</div>
+    </div>
+
+    <div class="screen hidden" id="guideScreen">
+        <button class="back-btn" onclick="showStartFromGuide()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Back
+        </button>
+        <div class="brand">
+            <h1>Getting Started</h1>
+            <p>Pick where you want to begin.</p>
+        </div>
+        <div class="modes">
+            <div class="mode-card" onclick="showBasics()">
+                <div class="mode-title">Basics</div>
+                <div class="mode-desc">Learn the fundamentals of blindfold chess notation and board coordinates.</div>
+            </div>
+            <div class="mode-card" onclick="showDifficulty()">
+                <div class="mode-title">Practice</div>
+                <div class="mode-desc">Jump straight into a practice game against Stockfish.</div>
+            </div>
+            <div class="mode-card" onclick="exitApp()">
+                <div class="mode-title">I'm done with it</div>
+                <div class="mode-desc">Close the app and come back when you're ready.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen hidden" id="basicsScreen">
+        <button class="back-btn" onclick="showGuideFromBasics()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Back
+        </button>
+        <div class="brand">
+            <h1>Basics</h1>
+            <p>Everything you need to get started.</p>
+        </div>
+        <div class="modes" style="text-align:left;gap:1.2rem;">
+            <div style="color:var(--text-secondary);font-size:0.95rem;line-height:1.7;padding:0 0.5rem;">
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Board Coordinates</p>
+                <p style="margin-bottom:1.2rem;">A chessboard has 8 files (columns a–h) and 8 ranks (rows 1–8). Each square is named by its file letter plus rank number, like <strong>e4</strong> or <strong>d5</strong>.</p>
+                
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Algebraic Notation</p>
+                <p style="margin-bottom:1.2rem;">Moves are written using algebraic notation: <strong>e4</strong> (pawn to e4), <strong>Nf3</strong> (knight to f3), <strong>O-O</strong> (short castle), <strong>Qxd5</strong> (queen takes on d5).</p>
+                
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Blindfold Chess</p>
+                <p>In blindfold chess, you play without seeing the board. You call out moves in notation, and your opponent (or the engine) replies the same way. Keeping the entire position in your mind is the challenge.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen hidden" id="exitScreen">
+        <div class="brand">
+            <h1>See you next time!</h1>
+            <p>You can close this tab whenever you're ready.</p>
+        </div>
     </div>
 
     <div class="screen hidden" id="gameScreen">
@@ -697,6 +756,46 @@
 
         function selectMode(mode) {
             console.log('Selected mode:', mode);
+        }
+
+        function showGuide() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('hidden');
+            const guide = document.getElementById('guideScreen');
+            guide.classList.remove('hidden');
+            requestAnimationFrame(() => guide.classList.add('active'));
+        }
+
+        function showStartFromGuide() {
+            document.getElementById('guideScreen').classList.remove('active');
+            document.getElementById('guideScreen').classList.add('hidden');
+            const start = document.getElementById('startScreen');
+            start.classList.remove('hidden');
+            requestAnimationFrame(() => start.classList.add('active'));
+        }
+
+        function showBasics() {
+            document.getElementById('guideScreen').classList.remove('active');
+            document.getElementById('guideScreen').classList.add('hidden');
+            const basics = document.getElementById('basicsScreen');
+            basics.classList.remove('hidden');
+            requestAnimationFrame(() => basics.classList.add('active'));
+        }
+
+        function showGuideFromBasics() {
+            document.getElementById('basicsScreen').classList.remove('active');
+            document.getElementById('basicsScreen').classList.add('hidden');
+            const guide = document.getElementById('guideScreen');
+            guide.classList.remove('hidden');
+            requestAnimationFrame(() => guide.classList.add('active'));
+        }
+
+        function exitApp() {
+            document.getElementById('guideScreen').classList.remove('active');
+            document.getElementById('guideScreen').classList.add('hidden');
+            const exit = document.getElementById('exitScreen');
+            exit.classList.remove('hidden');
+            requestAnimationFrame(() => exit.classList.add('active'));
         }
 
         document.getElementById('moveInput').addEventListener('keydown', (e) => {
