@@ -1,39 +1,707 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blindfold Chess</title>
+    <script src="chess.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #000000;
+            --surface: #1c1c1e;
+            --surface-hover: #2c2c2e;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --border: rgba(255, 255, 255, 0.1);
+            --shadow: rgba(0, 0, 0, 0.4);
+            --shadow-hover: rgba(0, 0, 0, 0.6);
+            --accent: #0a84ff;
+            --accent-hover: #409cff;
+            --transition-speed: 0.4s;
         }
+
+        [data-theme="light"] {
+            --bg: #f5f5f7;
+            --surface: #ffffff;
+            --surface-hover: #f2f2f7;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: rgba(0, 0, 0, 0.08);
+            --shadow: rgba(0, 0, 0, 0.08);
+            --shadow-hover: rgba(0, 0, 0, 0.14);
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 2rem;
+            transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+
+        .theme-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.3s ease, background var(--transition-speed) ease;
+            z-index: 100;
         }
-        p {
-            color: #888;
-            font-size: 1.1rem;
+
+        .theme-toggle:hover { transform: scale(1.1); box-shadow: 0 4px 20px var(--shadow-hover); }
+        .theme-toggle:active { transform: scale(0.95); }
+        .theme-toggle svg { width: 20px; height: 20px; fill: var(--text-primary); transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), fill var(--transition-speed) ease; }
+        .theme-toggle.spin svg { transform: rotate(180deg); }
+
+        .screen {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2.5rem;
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .screen.hidden { display: none; opacity: 0; transform: translateY(12px); }
+        .screen.active { opacity: 1; transform: translateY(0); }
+
+        .brand { text-align: center; display: flex; flex-direction: column; gap: 0.75rem; }
+        .brand h1 { font-size: clamp(2.2rem, 5.5vw, 3.2rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; color: var(--text-primary); transition: color var(--transition-speed) ease; }
+        .brand p { font-size: 1.05rem; font-weight: 400; color: var(--text-secondary); transition: color var(--transition-speed) ease; }
+
+        .modes { width: 100%; display: flex; flex-direction: column; gap: 1rem; }
+
+        .mode-card {
+            width: 100%;
+            padding: 1.5rem 1.75rem;
+            border-radius: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px var(--shadow);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.35s cubic-bezier(0.25, 0.1, 0.25, 1), background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+            text-align: left;
+        }
+        .mode-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 40px var(--shadow-hover); }
+        .mode-card:active { transform: translateY(-2px) scale(0.99); transition-duration: 0.1s; }
+        .mode-card .mode-title { font-size: 1.15rem; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; transition: color var(--transition-speed) ease; }
+        .mode-card .mode-desc { font-size: 0.9rem; font-weight: 400; color: var(--text-secondary); line-height: 1.4; transition: color var(--transition-speed) ease; }
+
+        .back-btn {
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.25s ease, background var(--transition-speed) ease;
+        }
+        .back-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--shadow-hover); }
+        .back-btn:active { transform: scale(0.97); }
+        .back-btn svg { width: 16px; height: 16px; stroke: var(--text-primary); transition: stroke var(--transition-speed) ease; }
+
+        .difficulty-list { width: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
+
+        .diff-item {
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            border-radius: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 12px var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.3s ease, background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+        }
+        .diff-item:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 8px 28px var(--shadow-hover); background: var(--surface-hover); }
+        .diff-item:active { transform: scale(0.98); transition-duration: 0.1s; }
+
+        .diff-info { display: flex; flex-direction: column; gap: 0.15rem; }
+        .diff-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); transition: color var(--transition-speed) ease; }
+        .diff-rating { font-size: 0.85rem; font-weight: 400; color: var(--text-secondary); transition: color var(--transition-speed) ease; }
+
+        .diff-arrow { width: 20px; height: 20px; stroke: var(--text-secondary); flex-shrink: 0; transition: transform 0.2s ease, stroke var(--transition-speed) ease; }
+        .diff-item:hover .diff-arrow { transform: translateX(3px); stroke: var(--text-primary); }
+
+        .engine-note { font-size: 0.8rem; color: var(--text-secondary); text-align: center; line-height: 1.5; opacity: 0.7; }
+        .footer { font-size: 0.8rem; color: var(--text-secondary); opacity: 0.6; margin-top: 0.5rem; transition: color var(--transition-speed) ease; }
+
+        /* ===== Game Screen ===== */
+        .game-header { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+        .game-info { display: flex; align-items: center; gap: 0.6rem; }
+        .difficulty-badge { font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 100px; background: var(--accent); color: #fff; text-transform: capitalize; }
+        .engine-status { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; transition: color 0.3s ease; }
+        .engine-status.thinking { color: var(--accent); }
+
+        .board-toggle {
+            width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px var(--shadow); transition: transform 0.2s ease, background var(--transition-speed) ease;
+        }
+        .board-toggle:hover { transform: scale(1.08); }
+        .board-toggle svg { width: 18px; height: 18px; stroke: var(--text-primary); fill: none; }
+
+        .board-panel {
+            width: 100%; display: flex; justify-content: center; overflow: hidden;
+            transition: max-height 0.4s ease, opacity 0.4s ease, margin 0.4s ease;
+            max-height: 340px; opacity: 1;
+        }
+        .board-panel.hidden { max-height: 0; opacity: 0; margin: 0; }
+
+        .board-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; max-width: 300px;
+            aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 2px solid var(--border);
+        }
+        .square { display: flex; align-items: center; justify-content: center; font-size: 1.5rem; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; user-select: none; }
+        .square.light { background: #eeeed2; }
+        .square.dark { background: #769656; }
+        .piece-white { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
+
+        .move-history {
+            width: 100%; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.2rem;
+            padding: 0.6rem 0.8rem; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 2px 12px var(--shadow);
+        }
+        .move-history::-webkit-scrollbar { width: 4px; }
+        .move-history::-webkit-scrollbar-track { background: transparent; }
+        .move-history::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .move-row {
+            display: grid; grid-template-columns: 2.2rem 1fr 1fr; gap: 0.5rem; align-items: center;
+            font-size: 0.92rem; padding: 0.25rem 0.5rem; border-radius: 6px; transition: background 0.15s ease;
+        }
+        .move-row:hover { background: var(--surface-hover); }
+        .move-number { color: var(--text-secondary); font-size: 0.82rem; font-weight: 500; }
+        .move-white, .move-black { color: var(--text-primary); font-weight: 500; }
+        .move-black { opacity: 0.85; }
+
+        .game-input { width: 100%; display: flex; gap: 0.6rem; }
+        .game-input input {
+            flex: 1; padding: 0.85rem 1.1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface);
+            color: var(--text-primary); font-size: 1rem; font-family: inherit; outline: none; box-shadow: 0 2px 12px var(--shadow);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background var(--transition-speed) ease;
+        }
+        .game-input input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+        .game-input input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15); }
+        .game-input button {
+            padding: 0.85rem 1.3rem; border-radius: 14px; border: none; background: var(--accent); color: #fff;
+            font-size: 1rem; font-weight: 600; font-family: inherit; cursor: pointer; box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .game-input button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .game-input button:active { transform: scale(0.97); }
+
+        .game-actions { width: 100%; display: flex; gap: 0.6rem; justify-content: center; }
+        .game-actions button {
+            padding: 0.6rem 1.1rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
+            color: var(--text-primary); font-size: 0.88rem; font-weight: 500; font-family: inherit; cursor: pointer;
+            box-shadow: 0 2px 8px var(--shadow); transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .game-actions button:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--shadow-hover); }
+
+        .result-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .result-overlay.show { opacity: 1; pointer-events: all; }
+        .result-card {
+            width: 90%; max-width: 320px; padding: 2rem 1.5rem; border-radius: 24px; background: var(--surface);
+            border: 1px solid var(--border); box-shadow: 0 20px 60px var(--shadow-hover); text-align: center;
+            display: flex; flex-direction: column; gap: 1rem; transform: scale(0.92); transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .result-overlay.show .result-card { transform: scale(1); }
+        .result-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+        .result-msg { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; }
+        .result-card button {
+            padding: 0.8rem 1.5rem; border-radius: 14px; border: none; background: var(--accent); color: #fff;
+            font-size: 1rem; font-weight: 600; font-family: inherit; cursor: pointer; box-shadow: 0 4px 16px var(--shadow);
+            transition: transform 0.2s ease, background 0.2s ease; margin-top: 0.3rem;
+        }
+        .result-card button:hover { transform: translateY(-1px); background: var(--accent-hover); }
+
+        @media (min-width: 768px) { .screen { max-width: 400px; } }
+        @media (max-width: 480px) {
+            body { padding: 1.5rem; }
+            .theme-toggle { top: 1rem; right: 1rem; }
+            .mode-card { padding: 1.35rem 1.5rem; }
+            .diff-item { padding: 1.1rem 1.3rem; }
+            .board-grid { max-width: 260px; }
+            .square { font-size: 1.3rem; }
+            .move-history { max-height: 180px; }
+            .game-input input { font-size: 0.95rem; }
         }
     </style>
 </head>
 <body>
-    <!-- SYNC_TEST: timestamp=2026-05-15T13:01, test_id=sync-verify-001 -->
-    <h1>♟️ Blindfold Chess</h1>
-    <p>盲棋项目开发中...</p>
-    <p style="color:#444; font-size:0.8rem; margin-top:2rem;">Git 同步测试标记：sync-verify-001</p>
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
+        <svg id="iconSun" viewBox="0 0 24 24" style="display: none;">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+        <svg id="iconMoon" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+    </button>
+
+    <div class="screen active" id="startScreen">
+        <div class="brand">
+            <h1>Blindfold Chess</h1>
+            <p>Play chess without seeing the board.</p>
+        </div>
+        <div class="modes">
+            <div class="mode-card" onclick="showDifficulty()">
+                <div class="mode-title">Blindfold Practice</div>
+                <div class="mode-desc">Practice blindfold chess against the Stockfish engine at your chosen level.</div>
+            </div>
+            <div class="mode-card" onclick="selectMode('coordinate')">
+                <div class="mode-title">Coordinate Practice</div>
+                <div class="mode-desc">Train your board vision by identifying squares and calling out coordinates.</div>
+            </div>
+        </div>
+        <div class="footer">Tap a mode to begin</div>
+    </div>
+
+    <div class="screen hidden" id="difficultyScreen">
+        <button class="back-btn" onclick="showStart()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Back
+        </button>
+        <div class="brand">
+            <h1>Blindfold Practice</h1>
+            <p>Choose a difficulty to face Stockfish.</p>
+        </div>
+        <div class="difficulty-list">
+            <div class="diff-item" onclick="startEngine('easy')">
+                <div class="diff-info"><div class="diff-name">Easy</div><div class="diff-rating">Stockfish ~1200 Elo</div></div>
+                <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+            <div class="diff-item" onclick="startEngine('medium')">
+                <div class="diff-info"><div class="diff-name">Medium</div><div class="diff-rating">Stockfish ~1800 Elo</div></div>
+                <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+            <div class="diff-item" onclick="startEngine('hard')">
+                <div class="diff-info"><div class="diff-name">Hard</div><div class="diff-rating">Stockfish ~2200 Elo</div></div>
+                <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+            <div class="diff-item" onclick="startEngine('expert')">
+                <div class="diff-info"><div class="diff-name">Expert</div><div class="diff-rating">Stockfish ~2800 Elo</div></div>
+                <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </div>
+        </div>
+        <div class="engine-note">Stockfish engine loaded locally.<br>Select a level to start playing.</div>
+    </div>
+
+    <div class="screen hidden" id="gameScreen">
+        <div class="game-header">
+            <button class="back-btn" onclick="showStartFromGame()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Back
+            </button>
+            <div class="game-info">
+                <span class="difficulty-badge" id="diffBadge">Medium</span>
+                <span class="engine-status" id="engineStatus">Ready</span>
+            </div>
+            <button class="board-toggle" onclick="toggleBoard()" aria-label="Toggle board">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="2"></rect><path d="M2 12h20M12 2v20"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="board-panel hidden" id="boardPanel">
+            <div class="board-grid" id="boardGrid"></div>
+        </div>
+
+        <div class="move-history" id="moveHistory">
+            <div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>
+        </div>
+
+        <div class="game-input">
+            <input type="text" id="moveInput" placeholder="e.g. e4, Nf3, O-O" autocomplete="off" />
+            <button onclick="submitMove()">Go</button>
+        </div>
+
+        <div class="game-actions">
+            <button onclick="newGame()">New Game</button>
+            <button onclick="resign()">Resign</button>
+        </div>
+    </div>
+
+    <div class="result-overlay" id="resultOverlay">
+        <div class="result-card">
+            <div class="result-title" id="resultTitle">Game Over</div>
+            <div class="result-msg" id="resultMsg">White wins by checkmate!</div>
+            <button onclick="hideResult(); newGame();">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const html = document.documentElement;
+            const toggle = document.getElementById('themeToggle');
+            const iconSun = document.getElementById('iconSun');
+            const iconMoon = document.getElementById('iconMoon');
+
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                html.setAttribute('data-theme', saved);
+                updateIcon(saved);
+            }
+
+            toggle.addEventListener('click', () => {
+                const current = html.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                updateIcon(next);
+                toggle.classList.add('spin');
+                setTimeout(() => toggle.classList.remove('spin'), 500);
+            });
+
+            function updateIcon(theme) {
+                if (theme === 'light') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; }
+                else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; }
+            }
+        })();
+
+        function showDifficulty() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('hidden');
+            const diff = document.getElementById('difficultyScreen');
+            diff.classList.remove('hidden');
+            requestAnimationFrame(() => diff.classList.add('active'));
+        }
+
+        function showStart() {
+            document.getElementById('difficultyScreen').classList.remove('active');
+            document.getElementById('difficultyScreen').classList.add('hidden');
+            const start = document.getElementById('startScreen');
+            start.classList.remove('hidden');
+            requestAnimationFrame(() => start.classList.add('active'));
+        }
+
+        /* ===== Stockfish Engine ===== */
+        class EngineManager {
+            constructor() {
+                this.worker = null;
+                this.ready = false;
+                this.thinking = false;
+                this.onEngineMove = null;
+                this.onMessage = null;
+                this.initPromise = null;
+            }
+
+            init() {
+                if (this.initPromise) return this.initPromise;
+                this.initPromise = new Promise((resolve, reject) => {
+                    try {
+                        this.worker = new Worker('stockfish.js');
+                        let uciokReceived = false;
+                        this.worker.onmessage = (e) => {
+                            const msg = typeof e.data === 'string' ? e.data : '';
+                            if (!uciokReceived && msg.includes('uciok')) {
+                                uciokReceived = true;
+                                this.ready = true;
+                                resolve();
+                            } else if (msg.startsWith('bestmove')) {
+                                this.thinking = false;
+                                const parts = msg.split(' ');
+                                const bestMove = parts[1] === '(none)' ? null : parts[1];
+                                if (this.onEngineMove) this.onEngineMove(bestMove);
+                            }
+                            if (this.onMessage) this.onMessage(msg);
+                        };
+                        this.worker.onerror = (err) => {
+                            console.error('Stockfish Worker error:', err);
+                            reject(err);
+                        };
+                        this.postMessage('uci');
+                        setTimeout(() => {
+                            if (!uciokReceived) reject(new Error('Stockfish init timeout'));
+                        }, 10000);
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+                return this.initPromise;
+            }
+
+            postMessage(msg) {
+                if (this.worker) this.worker.postMessage(msg);
+            }
+
+            setDifficulty(level) {
+                const map = {
+                    easy: { elo: 1200, skill: 5, depth: 8 },
+                    medium: { elo: 1800, skill: 10, depth: 10 },
+                    hard: { elo: 2200, skill: 15, depth: 14 },
+                    expert: { elo: 2800, skill: 20, depth: 18 }
+                };
+                const cfg = map[level] || map.medium;
+                this.postMessage('setoption name UCI_LimitStrength value true');
+                this.postMessage(`setoption name UCI_Elo value ${cfg.elo}`);
+                this.postMessage(`setoption name Skill Level value ${cfg.skill}`);
+                this.depth = cfg.depth;
+            }
+
+            newGame() { this.postMessage('ucinewgame'); }
+            setPosition(fen) { this.postMessage(`position fen ${fen}`); }
+
+            go() {
+                this.thinking = true;
+                this.postMessage(`go depth ${this.depth}`);
+            }
+
+            terminate() {
+                if (this.worker) {
+                    this.worker.terminate();
+                    this.worker = null;
+                    this.ready = false;
+                    this.initPromise = null;
+                }
+            }
+        }
+
+        let engine = null;
+        let game = null;
+        let currentLevel = 'medium';
+        let boardVisible = false;
+
+        function startEngine(level) {
+            currentLevel = level;
+            document.getElementById('diffBadge').textContent = level;
+            document.getElementById('difficultyScreen').classList.remove('active');
+            document.getElementById('difficultyScreen').classList.add('hidden');
+            const gs = document.getElementById('gameScreen');
+            gs.classList.remove('hidden');
+            requestAnimationFrame(() => gs.classList.add('active'));
+            initGame();
+        }
+
+        function showStartFromGame() {
+            if (engine) { engine.terminate(); engine = null; }
+            document.getElementById('gameScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('hidden');
+            const start = document.getElementById('startScreen');
+            start.classList.remove('hidden');
+            requestAnimationFrame(() => start.classList.add('active'));
+        }
+
+        async function initGame() {
+            game = new Chess();
+            boardVisible = false;
+            document.getElementById('boardPanel').classList.add('hidden');
+            document.getElementById('moveHistory').innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>';
+            const input = document.getElementById('moveInput');
+            input.value = ''; input.disabled = false;
+            updateEngineStatus('Ready');
+
+            try {
+                engine = new EngineManager();
+                engine.onEngineMove = handleEngineMove;
+                await engine.init();
+                engine.setDifficulty(currentLevel);
+                engine.newGame();
+            } catch (err) {
+                console.error('Engine init failed:', err);
+                document.getElementById('moveHistory').innerHTML = '<div style="color:#ff453a;text-align:center;padding:1rem;">Failed to load Stockfish. Try refreshing or check console.</div>';
+            }
+        }
+
+        function submitMove() {
+            const input = document.getElementById('moveInput');
+            const san = input.value.trim();
+            if (!san) return;
+
+            const move = game.move(san);
+            if (!move) {
+                input.style.borderColor = '#ff453a';
+                setTimeout(() => input.style.borderColor = '', 600);
+                return;
+            }
+
+            input.value = '';
+            input.style.borderColor = '';
+            updateMoveHistory();
+            renderBoard();
+
+            if (game.game_over()) {
+                handleGameOver();
+                return;
+            }
+
+            input.disabled = true;
+            updateEngineStatus('Thinking...');
+            engine.setPosition(game.fen());
+            engine.go();
+        }
+
+        function handleEngineMove(bestMoveUci) {
+            if (!bestMoveUci) {
+                document.getElementById('moveInput').disabled = true;
+                updateEngineStatus('Ready');
+                return;
+            }
+
+            const moves = game.moves({ verbose: true });
+            const match = moves.find(m => {
+                let uci = m.from + m.to;
+                if (m.promotion) uci += m.promotion;
+                return uci === bestMoveUci;
+            });
+
+            if (match) {
+                game.move(match.san);
+                updateMoveHistory();
+                renderBoard();
+            }
+
+            const input = document.getElementById('moveInput');
+            input.disabled = false;
+            input.focus();
+            updateEngineStatus('Ready');
+
+            if (game.game_over()) {
+                handleGameOver();
+            }
+        }
+
+        function updateMoveHistory() {
+            const history = game.history();
+            const container = document.getElementById('moveHistory');
+            if (history.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>';
+                return;
+            }
+            let html = '';
+            for (let i = 0; i < history.length; i += 2) {
+                const num = Math.floor(i / 2) + 1;
+                const white = history[i];
+                const black = history[i + 1] || '';
+                html += `<div class="move-row"><span class="move-number">${num}.</span><span class="move-white">${white}</span><span class="move-black">${black}</span></div>`;
+            }
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderBoard() {
+            const board = game.board();
+            const pieces = {
+                w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
+                b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }
+            };
+            let html = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const isLight = (r + c) % 2 === 0;
+                    const piece = board[r][c];
+                    const cls = isLight ? 'light' : 'dark';
+                    const content = piece ? `<span class="${piece.color === 'w' ? 'piece-white' : ''}">${pieces[piece.color][piece.type]}</span>` : '';
+                    html += `<div class="square ${cls}">${content}</div>`;
+                }
+            }
+            document.getElementById('boardGrid').innerHTML = html;
+        }
+
+        function toggleBoard() {
+            boardVisible = !boardVisible;
+            document.getElementById('boardPanel').classList.toggle('hidden', !boardVisible);
+            if (boardVisible) renderBoard();
+        }
+
+        function updateEngineStatus(text) {
+            const el = document.getElementById('engineStatus');
+            const dot = text === 'Thinking...' ? '◐' : '●';
+            el.textContent = dot + ' ' + text;
+            el.classList.toggle('thinking', text === 'Thinking...');
+        }
+
+        function handleGameOver() {
+            document.getElementById('moveInput').disabled = true;
+            let title, msg;
+            if (game.in_checkmate()) {
+                const winner = game.turn() === 'w' ? 'Black' : 'White';
+                title = 'Checkmate';
+                msg = winner + ' wins by checkmate!';
+            } else if (game.in_stalemate()) {
+                title = 'Stalemate';
+                msg = 'Game drawn by stalemate.';
+            } else if (game.in_draw()) {
+                title = 'Draw';
+                msg = 'Game drawn.';
+            } else {
+                title = 'Game Over';
+                msg = 'The game has ended.';
+            }
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultMsg').textContent = msg;
+            document.getElementById('resultOverlay').classList.add('show');
+        }
+
+        function hideResult() {
+            document.getElementById('resultOverlay').classList.remove('show');
+        }
+
+        function newGame() {
+            hideResult();
+            initGame();
+        }
+
+        function resign() {
+            if (!game || game.game_over()) return;
+            document.getElementById('resultTitle').textContent = 'Resigned';
+            document.getElementById('resultMsg').textContent = 'You resigned. Stockfish wins.';
+            document.getElementById('resultOverlay').classList.add('show');
+            document.getElementById('moveInput').disabled = true;
+        }
+
+        function selectMode(mode) {
+            console.log('Selected mode:', mode);
+        }
+
+        document.getElementById('moveInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitMove();
+        });
+    </script>
 </body>
 </html>
