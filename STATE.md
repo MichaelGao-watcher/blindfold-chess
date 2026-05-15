@@ -13,6 +13,7 @@
   1. 测试 Git 同步与状态恢复机制（端到端验证 push + clone）
   2. 建立独立状态备份架构：新建 `STATE.md`，重构 `AGENTS.md` 为静态规则手册，更新 `README.md` 职责边界
   3. 定义触发词体系："恢复" → 读 `AGENTS.md` + `STATE.md`；"存档" → 保存 `STATE.md` → git commit → push
+  4. 用户确认：可直接指挥 AI 执行 Git 上传，无需手动开终端
 - **参与**：用户 + AI
 
 ---
