@@ -493,11 +493,31 @@
                 this.initPromise = null;
             }
 
-            init() {
+            async init() {
                 if (this.initPromise) return this.initPromise;
-                this.initPromise = new Promise((resolve, reject) => {
+                const workerUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.js';
+                const wasmUrl = 'https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.wasm';
+                
+                this.initPromise = new Promise(async (resolve, reject) => {
                     try {
-                        this.worker = new Worker('https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.js');
+                        let finalWorkerUrl = workerUrl;
+                        
+                        // Try direct Worker first (fastest for http/https)
+                        try {
+                            const testWorker = new Worker(workerUrl);
+                            testWorker.terminate();
+                        } catch (directErr) {
+                            // file:// or restricted environment: fall back to Blob Worker
+                            console.log('Direct Worker blocked, trying Blob Worker...');
+                            const res = await fetch(workerUrl);
+                            if (!res.ok) throw new Error('Failed to fetch Stockfish script: ' + res.status);
+                            const code = await res.text();
+                            const blob = new Blob([code], {type: 'application/javascript'});
+                            // Pass wasm URL via hash so stockfish.js can locate it
+                            finalWorkerUrl = URL.createObjectURL(blob) + '#' + encodeURIComponent(wasmUrl);
+                        }
+                        
+                        this.worker = new Worker(finalWorkerUrl);
                         let uciokReceived = false;
                         let bootLines = [];
                         this.worker.onmessage = (e) => {
@@ -523,9 +543,9 @@
                         setTimeout(() => {
                             if (!uciokReceived) {
                                 console.error('Stockfish boot log:', bootLines);
-                                reject(new Error('Stockfish init timeout (30s). The engine may be loading slowly on your connection.'));
+                                reject(new Error('Stockfish init timeout (60s). The engine may be loading slowly on your connection.'));
                             }
-                        }, 30000);
+                        }, 60000);
                     } catch (err) {
                         reject(err);
                     }
