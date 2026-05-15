@@ -79,6 +79,32 @@
         .theme-toggle svg { width: 20px; height: 20px; fill: var(--text-primary); transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), fill var(--transition-speed) ease; }
         .theme-toggle.spin svg { transform: rotate(180deg); }
 
+        .piece-style-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 4.5rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.3s ease, background var(--transition-speed) ease;
+            z-index: 100;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+        .piece-style-toggle:hover { transform: scale(1.1); box-shadow: 0 4px 20px var(--shadow-hover); }
+        .piece-style-toggle:active { transform: scale(0.95); }
+
         .screen {
             width: 100%;
             max-width: 420px;
@@ -263,6 +289,7 @@
         @media (max-width: 480px) {
             body { padding: 1.5rem; }
             .theme-toggle { top: 1rem; right: 1rem; }
+            .piece-style-toggle { top: 1rem; right: 4rem; }
             .mode-card { padding: 1.35rem 1.5rem; }
             .diff-item { padding: 1.1rem 1.3rem; }
             .board-grid { width: 288px; grid-template-columns: repeat(8, 36px); }
@@ -273,6 +300,8 @@
     </style>
 </head>
 <body>
+    <button class="piece-style-toggle" id="pieceStyleToggle" onclick="togglePieceStyle()" aria-label="切换棋子样式">K</button>
+
     <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
         <svg id="iconSun" viewBox="0 0 24 24" style="display: none;">
             <circle cx="12" cy="12" r="5"/>
@@ -357,7 +386,6 @@
             </div>
             <div class="mode-card" onclick="exitApp()">
                 <div class="mode-title">I'm done with it</div>
-                <div class="mode-desc">Close the app and come back when you're ready.</div>
             </div>
         </div>
     </div>
@@ -464,6 +492,13 @@
                 if (theme === 'light') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; }
                 else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; }
             }
+        })();
+
+        (function() {
+            const btn = document.getElementById('pieceStyleToggle');
+            const saved = localStorage.getItem('pieceStyle');
+            if (saved === 'unicode') btn.textContent = '♔';
+            else btn.textContent = 'K';
         })();
 
         function showDifficulty() {
@@ -721,10 +756,16 @@
 
         function renderBoard() {
             const board = game.board();
-            const pieces = {
+            const useUnicode = localStorage.getItem('pieceStyle') === 'unicode';
+            const unicodePieces = {
                 w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
                 b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }
             };
+            const letterPieces = {
+                w: { k: 'K', q: 'Q', r: 'R', b: 'B', n: 'N', p: 'P' },
+                b: { k: 'K', q: 'Q', r: 'R', b: 'B', n: 'N', p: 'P' }
+            };
+            const pieces = useUnicode ? unicodePieces : letterPieces;
             let html = '';
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
@@ -826,12 +867,18 @@
             requestAnimationFrame(() => guide.classList.add('active'));
         }
 
+        function togglePieceStyle() {
+            const btn = document.getElementById('pieceStyleToggle');
+            const current = localStorage.getItem('pieceStyle') || 'letter';
+            const next = current === 'unicode' ? 'letter' : 'unicode';
+            localStorage.setItem('pieceStyle', next);
+            btn.textContent = next === 'unicode' ? '♔' : 'K';
+            if (boardVisible) renderBoard();
+        }
+
         function exitApp() {
-            document.getElementById('guideScreen').classList.remove('active');
-            document.getElementById('guideScreen').classList.add('hidden');
-            const exit = document.getElementById('exitScreen');
-            exit.classList.remove('hidden');
-            requestAnimationFrame(() => exit.classList.add('active'));
+            window.close();
+            window.location.href = 'about:blank';
         }
 
         document.getElementById('moveInput').addEventListener('keydown', (e) => {
