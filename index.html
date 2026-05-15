@@ -497,7 +497,7 @@
                 if (this.initPromise) return this.initPromise;
                 this.initPromise = new Promise((resolve, reject) => {
                     try {
-                        this.worker = new Worker('stockfish.js');
+                        this.worker = new Worker('https://unpkg.com/stockfish@18.0.7/bin/stockfish-18-lite.js');
                         let uciokReceived = false;
                         let bootLines = [];
                         this.worker.onmessage = (e) => {
