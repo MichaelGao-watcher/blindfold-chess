@@ -382,8 +382,6 @@
                 <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Blindfold Chess</p>
                 <p>In blindfold chess, you play without seeing the board. You call out moves in notation, and your opponent (or the engine) replies the same way. Keeping the entire position in your mind is the challenge.</p>
                 
-                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;margin-top:1.2rem;">Getting Caught Up</p>
-                <p>我是被骗进来的，我需要先学习……balabala</p>
             </div>
         </div>
     </div>
@@ -501,8 +499,10 @@
                     try {
                         this.worker = new Worker('stockfish.js');
                         let uciokReceived = false;
+                        let bootLines = [];
                         this.worker.onmessage = (e) => {
                             const msg = typeof e.data === 'string' ? e.data : '';
+                            bootLines.push(msg);
                             if (!uciokReceived && msg.includes('uciok')) {
                                 uciokReceived = true;
                                 this.ready = true;
@@ -521,8 +521,11 @@
                         };
                         this.postMessage('uci');
                         setTimeout(() => {
-                            if (!uciokReceived) reject(new Error('Stockfish init timeout'));
-                        }, 10000);
+                            if (!uciokReceived) {
+                                console.error('Stockfish boot log:', bootLines);
+                                reject(new Error('Stockfish init timeout (30s). The engine may be loading slowly on your connection.'));
+                            }
+                        }, 30000);
                     } catch (err) {
                         reject(err);
                     }
