@@ -453,12 +453,23 @@
             <h1 data-i18n="coordTitle">Coordinate Practice</h1>
             <p data-i18n="coordSubtitle">Pick a side and find the squares.</p>
         </div>
+        <div id="coordScore" style="font-size:1.1rem;font-weight:600;color:var(--accent);display:none;">Score: 0 / 0</div>
+        <div id="coordPrompt" style="font-size:1.3rem;font-weight:700;color:var(--text-primary);text-align:center;min-height:2rem;display:none;"></div>
         <div class="board-panel" style="max-height:380px;opacity:1;margin:0;">
             <div class="board-grid" id="coordinateBoardGrid"></div>
         </div>
-        <div class="game-actions">
+        <div id="coordInputArea" style="width:100%;display:none;gap:0.6rem;justify-content:center;align-items:center;">
+            <input type="text" id="coordInput" placeholder="e.g. e4" style="padding:0.6rem 1rem;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);font-size:1rem;font-family:inherit;width:120px;text-align:center;" />
+            <button onclick="submitCoordAnswer()" data-i18n="go">Go</button>
+        </div>
+        <div id="coordFeedback" style="font-size:0.95rem;text-align:center;min-height:1.5rem;color:var(--text-secondary);"></div>
+        <div class="game-actions" id="coordSetupActions">
             <button onclick="startCoordinatePractice('white')" data-i18n="playAsWhite">Play as White</button>
             <button onclick="startCoordinatePractice('black')" data-i18n="playAsBlack">Play as Black</button>
+        </div>
+        <div class="game-actions" id="coordModeActions" style="display:none;">
+            <button onclick="setCoordMode('a')" id="btnModeA" data-i18n="modeA">Mode A: Find Square</button>
+            <button onclick="setCoordMode('b')" id="btnModeB" data-i18n="modeB">Mode B: Name Square</button>
         </div>
     </div>
 
@@ -583,6 +594,11 @@
                 coordSubtitle: "Pick a side and find the squares.",
                 playAsWhite: "Play as White",
                 playAsBlack: "Play as Black",
+                modeA: "Mode A: Find Square",
+                modeB: "Mode B: Name Square",
+                findSquare: "Find",
+                correct: "Correct!",
+                wrong: "Wrong! It was",
                 loadingError: "Failed to load Stockfish. Try refreshing or check console."
             },
             zh: {
@@ -653,6 +669,11 @@
                 coordSubtitle: "选择阵营，识别棋盘格子。",
                 playAsWhite: "执白",
                 playAsBlack: "执黑",
+                modeA: "模式A：找格子",
+                modeB: "模式B：报坐标",
+                findSquare: "找出",
+                correct: "正确！",
+                wrong: "错了！答案是",
                 loadingError: "加载 Stockfish 失败。请刷新页面或检查控制台。"
             }
         };
@@ -1109,12 +1130,20 @@
             const coord = document.getElementById('coordinateScreen');
             coord.classList.remove('hidden');
             requestAnimationFrame(() => coord.classList.add('active'));
-            // Render initial board for coordinate practice
-            const coordGame = new Chess();
-            renderBoard(coordGame);
+            // Reset coordinate practice UI
+            coordState.active = false;
+            document.getElementById('coordSetupActions').style.display = 'flex';
+            document.getElementById('coordModeActions').style.display = 'none';
+            document.getElementById('coordScore').style.display = 'none';
+            document.getElementById('coordPrompt').style.display = 'none';
+            document.getElementById('coordInputArea').style.display = 'none';
+            document.getElementById('coordFeedback').textContent = '';
+            renderCoordinateBoard();
         }
 
         function showStartFromCoordinate() {
+            coordState.active = false;
+            clearCoordHighlight();
             document.getElementById('coordinateScreen').classList.remove('active');
             document.getElementById('coordinateScreen').classList.add('hidden');
             const start = document.getElementById('startScreen');
@@ -1122,8 +1151,107 @@
             requestAnimationFrame(() => start.classList.add('active'));
         }
 
+        const coordState = { side: null, mode: 'a', score: 0, total: 0, target: null, active: false };
+        const ALL_SQUARES = (() => { const f='abcdefgh',r='12345678',a=[];for(let i=0;i<8;i++)for(let j=0;j<8;j++)a.push(f[j]+r[i]);return a; })();
+
+        function renderCoordinateBoard() {
+            const files = ['A','B','C','D','E','F','G','H'];
+            const ranks = ['8','7','6','5','4','3','2','1'];
+            let html = '';
+            for (let r = 0; r < 8; r++) {
+                html += `<div class="coord-label">${ranks[r]}</div>`;
+                for (let c = 0; c < 8; c++) {
+                    const isLight = (r + c) % 2 === 0;
+                    const sq = files[c].toLowerCase() + ranks[r];
+                    const cls = isLight ? 'light' : 'dark';
+                    html += `<div class="square ${cls}" data-square="${sq}" onclick="handleCoordClick(this)"></div>`;
+                }
+            }
+            html += `<div class="coord-label"></div>`;
+            for (let c = 0; c < 8; c++) html += `<div class="coord-label">${files[c]}</div>`;
+            document.getElementById('coordinateBoardGrid').innerHTML = html;
+        }
+
         function startCoordinatePractice(color) {
-            console.log('Coordinate practice started as:', color);
+            coordState.side = color;
+            coordState.score = 0;
+            coordState.total = 0;
+            coordState.active = true;
+            document.getElementById('coordSetupActions').style.display = 'none';
+            document.getElementById('coordModeActions').style.display = 'flex';
+            document.getElementById('coordScore').style.display = 'block';
+            document.getElementById('coordPrompt').style.display = 'block';
+            renderCoordinateBoard();
+            updateCoordScore();
+            setCoordMode('a');
+        }
+
+        function setCoordMode(mode) {
+            coordState.mode = mode;
+            document.getElementById('btnModeA').style.background = mode === 'a' ? 'var(--accent)' : 'var(--surface)';
+            document.getElementById('btnModeA').style.color = mode === 'a' ? '#fff' : 'var(--text-primary)';
+            document.getElementById('btnModeB').style.background = mode === 'b' ? 'var(--accent)' : 'var(--surface)';
+            document.getElementById('btnModeB').style.color = mode === 'b' ? '#fff' : 'var(--text-primary)';
+            document.getElementById('coordInputArea').style.display = mode === 'b' ? 'flex' : 'none';
+            clearCoordHighlight();
+            nextCoordQuestion();
+        }
+
+        function nextCoordQuestion() {
+            coordState.target = ALL_SQUARES[Math.floor(Math.random() * 64)];
+            const promptEl = document.getElementById('coordPrompt');
+            if (coordState.mode === 'a') {
+                promptEl.textContent = t('findSquare') + ' ' + coordState.target.toUpperCase();
+                clearCoordHighlight();
+            } else {
+                promptEl.textContent = t('findSquare');
+                highlightCoordSquare(coordState.target);
+            }
+            document.getElementById('coordFeedback').textContent = '';
+            const input = document.getElementById('coordInput');
+            if (input) { input.value = ''; input.focus(); }
+        }
+
+        function handleCoordClick(el) {
+            if (!coordState.active || coordState.mode !== 'a') return;
+            const sq = el.getAttribute('data-square');
+            checkCoordAnswer(sq);
+        }
+
+        function submitCoordAnswer() {
+            if (!coordState.active || coordState.mode !== 'b') return;
+            const val = document.getElementById('coordInput').value.trim().toLowerCase();
+            checkCoordAnswer(val);
+        }
+
+        function checkCoordAnswer(answer) {
+            coordState.total++;
+            const isCorrect = answer === coordState.target;
+            if (isCorrect) coordState.score++;
+            updateCoordScore();
+            const fb = document.getElementById('coordFeedback');
+            fb.textContent = isCorrect ? t('correct') : t('wrong') + ' ' + coordState.target.toUpperCase();
+            fb.style.color = isCorrect ? '#34c759' : '#ff453a';
+            setTimeout(() => {
+                fb.style.color = 'var(--text-secondary)';
+                nextCoordQuestion();
+            }, 1200);
+        }
+
+        function updateCoordScore() {
+            document.getElementById('coordScore').textContent = 'Score: ' + coordState.score + ' / ' + coordState.total;
+        }
+
+        function highlightCoordSquare(sq) {
+            clearCoordHighlight();
+            const el = document.querySelector('#coordinateBoardGrid .square[data-square="' + sq + '"]');
+            if (el) el.style.background = '#0a84ff';
+        }
+
+        function clearCoordHighlight() {
+            document.querySelectorAll('#coordinateBoardGrid .square').forEach(el => {
+                el.style.background = '';
+            });
         }
 
         function showGuide() {
@@ -1166,6 +1294,9 @@
 
         document.getElementById('moveInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') submitMove();
+        });
+        document.getElementById('coordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitCoordAnswer();
         });
     </script>
 </body>
