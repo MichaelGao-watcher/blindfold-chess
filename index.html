@@ -444,6 +444,24 @@
         </div>
     </div>
 
+    <div class="screen hidden" id="coordinateScreen">
+        <button class="back-btn" onclick="showStartFromCoordinate()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span data-i18n="back">Back</span>
+        </button>
+        <div class="brand">
+            <h1 data-i18n="coordTitle">Coordinate Practice</h1>
+            <p data-i18n="coordSubtitle">Pick a side and find the squares.</p>
+        </div>
+        <div class="board-panel" style="max-height:380px;opacity:1;margin:0;">
+            <div class="board-grid" id="coordinateBoardGrid"></div>
+        </div>
+        <div class="game-actions">
+            <button onclick="startCoordinatePractice('white')" data-i18n="playAsWhite">Play as White</button>
+            <button onclick="startCoordinatePractice('black')" data-i18n="playAsBlack">Play as Black</button>
+        </div>
+    </div>
+
     <div class="screen hidden" id="exitScreen">
         <div class="brand">
             <h1 data-i18n="exitTitle">See you next time!</h1>
@@ -561,6 +579,10 @@
                 langLabel: "Language",
                 langZh: "中文",
                 langEn: "English",
+                coordTitle: "Coordinate Practice",
+                coordSubtitle: "Pick a side and find the squares.",
+                playAsWhite: "Play as White",
+                playAsBlack: "Play as Black",
                 loadingError: "Failed to load Stockfish. Try refreshing or check console."
             },
             zh: {
@@ -627,6 +649,10 @@
                 langLabel: "语言",
                 langZh: "中文",
                 langEn: "English",
+                coordTitle: "坐标练习",
+                coordSubtitle: "选择阵营，识别棋盘格子。",
+                playAsWhite: "执白",
+                playAsBlack: "执黑",
                 loadingError: "加载 Stockfish 失败。请刷新页面或检查控制台。"
             }
         };
@@ -996,8 +1022,8 @@
             bp: `<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm" viewBox="0 0 10 10" class="piece-svg"><g style="fill:#fff;fill-opacity:1"><g style="fill:#fff;fill-opacity:1;stroke-width:.09651081;stroke-miterlimit:4;stroke-dasharray:none"><path d="M18.875 10.234a3.938 3.938 0 0 0-3.938 3.938 3.938 3.938 0 0 0 1.27 2.889l-2.234.959v2.33l2.643-.008c-1.555 10.05-6.007 6.96-6.007 12.527h16.657c0-5.646-4.56-2.232-6.124-12.53l2.64-.04v-2.315l-2.21-.945a3.938 3.938 0 0 0 1.242-2.867 3.938 3.938 0 0 0-3.939-3.938" style="fill:#000004;fill-opacity:1;stroke:none;stroke-width:1.51181102;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" transform="scale(.26458)"/></g></g></svg>`
         };
 
-        function renderBoard() {
-            const board = game.board();
+        function renderBoard(chessGame) {
+            const board = (chessGame || game).board();
             const files = ['A','B','C','D','E','F','G','H'];
             const ranks = ['8','7','6','5','4','3','2','1'];
             let html = '';
@@ -1072,7 +1098,32 @@
         }
 
         function selectMode(mode) {
-            console.log('Selected mode:', mode);
+            if (mode === 'coordinate') {
+                showCoordinate();
+            }
+        }
+
+        function showCoordinate() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('hidden');
+            const coord = document.getElementById('coordinateScreen');
+            coord.classList.remove('hidden');
+            requestAnimationFrame(() => coord.classList.add('active'));
+            // Render initial board for coordinate practice
+            const coordGame = new Chess();
+            renderBoard(coordGame);
+        }
+
+        function showStartFromCoordinate() {
+            document.getElementById('coordinateScreen').classList.remove('active');
+            document.getElementById('coordinateScreen').classList.add('hidden');
+            const start = document.getElementById('startScreen');
+            start.classList.remove('hidden');
+            requestAnimationFrame(() => start.classList.add('active'));
+        }
+
+        function startCoordinatePractice(color) {
+            console.log('Coordinate practice started as:', color);
         }
 
         function showGuide() {
