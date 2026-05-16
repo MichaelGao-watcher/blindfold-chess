@@ -635,8 +635,6 @@
             return (i18n[lang] && i18n[lang][key]) || (i18n.en && i18n.en[key]) || key;
         }
 
-        let currentLevel = 'medium';
-
         function updateTexts() {
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -657,8 +655,6 @@
                 const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
                 themeLabel.textContent = currentTheme === 'dark' ? t('themeDark') : t('themeLight');
             }
-            const diffBadge = document.getElementById('diffBadge');
-            if (diffBadge && currentLevel) diffBadge.textContent = t(currentLevel);
         }
 
         // Theme logic
@@ -840,6 +836,7 @@
 
         let engine = null;
         let game = null;
+        let currentLevel = 'medium';
         let boardVisible = false;
 
         function startEngine(level) {
