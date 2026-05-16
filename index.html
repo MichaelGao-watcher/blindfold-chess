@@ -635,6 +635,8 @@
             return (i18n[lang] && i18n[lang][key]) || (i18n.en && i18n.en[key]) || key;
         }
 
+        let currentLevel = 'medium';
+
         function updateTexts() {
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -668,8 +670,10 @@
             function updateThemeIcon(theme) {
                 const sun = document.getElementById('panelIconSun');
                 const moon = document.getElementById('panelIconMoon');
-                if (theme === 'light') { sun.style.display = 'block'; moon.style.display = 'none'; }
-                else { sun.style.display = 'none'; moon.style.display = 'block'; }
+                if (sun && moon) {
+                    if (theme === 'light') { sun.style.display = 'block'; moon.style.display = 'none'; }
+                    else { sun.style.display = 'none'; moon.style.display = 'block'; }
+                }
                 const label = document.getElementById('themeLabelText');
                 if (label) label.textContent = theme === 'dark' ? t('themeDark') : t('themeLight');
             }
@@ -836,7 +840,6 @@
 
         let engine = null;
         let game = null;
-        let currentLevel = 'medium';
         let boardVisible = false;
 
         function startEngine(level) {
