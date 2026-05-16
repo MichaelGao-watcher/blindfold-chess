@@ -950,7 +950,7 @@
             const history = game.history();
             const container = document.getElementById('moveHistory');
             if (history.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>';
+                container.innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">' + t('newGameStarted') + '</div>';
                 return;
             }
             let html = '';
@@ -1009,9 +1009,10 @@
 
         function updateEngineStatus(text) {
             const el = document.getElementById('engineStatus');
-            const dot = text === 'Thinking...' ? '◐' : '●';
+            const isThinking = text === t('engineThinking');
+            const dot = isThinking ? '◐' : '●';
             el.textContent = dot + ' ' + text;
-            el.classList.toggle('thinking', text === 'Thinking...');
+            el.classList.toggle('thinking', isThinking);
         }
 
         function handleGameOver() {
