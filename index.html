@@ -861,6 +861,7 @@
         }
 
         async function initGame() {
+            if (engine) { engine.terminate(); engine = null; }
             game = new Chess();
             boardVisible = false;
             document.getElementById('boardPanel').classList.add('hidden');
@@ -868,6 +869,7 @@
             const input = document.getElementById('moveInput');
             input.value = ''; input.disabled = false;
             updateEngineStatus(t('engineReady'));
+            document.getElementById('engineStatus').classList.remove('error');
 
             try {
                 engine = new EngineManager();
@@ -940,9 +942,15 @@
             });
 
             if (match) {
-                game.move(match.san);
-                updateMoveHistory();
-                renderBoard();
+                const result = game.move(match.san);
+                if (result) {
+                    updateMoveHistory();
+                    renderBoard();
+                } else {
+                    console.error('Engine move failed:', match.san);
+                }
+            } else {
+                console.error('Engine UCI not matched:', bestMoveUci, 'legal moves:', moves.map(m => m.from + m.to + (m.promotion || '')));
             }
 
             const input = document.getElementById('moveInput');
