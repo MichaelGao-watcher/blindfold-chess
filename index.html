@@ -209,6 +209,7 @@
         .difficulty-badge { font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 100px; background: var(--accent); color: #fff; text-transform: capitalize; }
         .engine-status { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.3rem; transition: color 0.3s ease; }
         .engine-status.thinking { color: var(--accent); }
+        .engine-status.error { color: #ff453a; }
 
         .board-toggle {
             width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
@@ -876,6 +877,9 @@
                 engine.newGame();
             } catch (err) {
                 console.error('Engine init failed:', err);
+                engine = null;
+                updateEngineStatus(t('loadingError'));
+                document.getElementById('engineStatus').classList.add('error');
                 document.getElementById('moveHistory').innerHTML = '<div style="color:#ff453a;text-align:center;padding:1rem;">' + t('loadingError') + '</div>';
             }
         }
@@ -910,6 +914,11 @@
                 return;
             }
 
+            if (!engine || !engine.ready) {
+                updateEngineStatus(t('loadingError'));
+                document.getElementById('engineStatus').classList.add('error');
+                return;
+            }
             input.disabled = true;
             updateEngineStatus(t('engineThinking'));
             engine.setPosition(game.fen());
