@@ -234,6 +234,28 @@
         .square { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; font-size: 1.6rem; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; user-select: none; }
         .square.light { background: #b0b0b0; }
         .square.dark { background: #808080; }
+
+        /* Coordinate practice board - larger */
+        #coordinateBoardGrid.board-grid { width: 420px; grid-template-columns: 24px repeat(8, 48px); grid-template-rows: repeat(8, 48px) 24px; }
+        #coordinateBoardGrid .square { width: 48px; height: 48px; cursor: pointer; transition: transform 0.1s ease, background 0.15s ease; }
+        #coordinateBoardGrid .square:active { transform: scale(0.88); }
+        #coordinateBoardGrid .square.correct-target { animation: correctPulse 1.2s ease infinite; }
+        #coordinateBoardGrid .square.wrong-tap { background: #ff453a !important; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(-10px); }
+            30% { transform: translateX(10px); }
+            45% { transform: translateX(-7px); }
+            60% { transform: translateX(7px); }
+            75% { transform: translateX(-4px); }
+            90% { transform: translateX(4px); }
+        }
+        .shake { animation: shake 0.5s ease; }
+        @keyframes correctPulse {
+            0%, 100% { box-shadow: inset 0 0 0 3px #34c759; }
+            50% { box-shadow: inset 0 0 0 6px #34c759; }
+        }
         .coord-label {
             display: flex; align-items: center; justify-content: center;
             font-size: 0.65rem; font-weight: 600; color: var(--text-secondary);
@@ -314,6 +336,8 @@
             .diff-item { padding: 1.1rem 1.3rem; }
             .board-grid { width: 306px; grid-template-columns: 18px repeat(8, 36px); grid-template-rows: repeat(8, 36px) 18px; }
             .square { width: 36px; height: 36px; font-size: 1.5rem; }
+            #coordinateBoardGrid.board-grid { width: 360px; grid-template-columns: 20px repeat(8, 40px); grid-template-rows: repeat(8, 40px) 20px; }
+            #coordinateBoardGrid .square { width: 40px; height: 40px; }
             .coord-label { font-size: 0.6rem; }
             .move-history { max-height: 180px; }
             .game-input input { font-size: 0.95rem; }
@@ -1151,7 +1175,7 @@
             requestAnimationFrame(() => start.classList.add('active'));
         }
 
-        const coordState = { side: null, mode: 'a', score: 0, total: 0, target: null, active: false };
+        const coordState = { side: null, mode: 'a', score: 0, total: 0, target: null, active: false, waitingCorrect: false };
         const ALL_SQUARES = (() => { const f='abcdefgh',r='12345678',a=[];for(let i=0;i<8;i++)for(let j=0;j<8;j++)a.push(f[j]+r[i]);return a; })();
 
         function renderCoordinateBoard() {
@@ -1213,8 +1237,23 @@
         }
 
         function handleCoordClick(el) {
-            if (!coordState.active || coordState.mode !== 'a') return;
+            if (!coordState.active) return;
             const sq = el.getAttribute('data-square');
+
+            if (coordState.waitingCorrect) {
+                if (sq === coordState.target) {
+                    coordState.waitingCorrect = false;
+                    clearCoordHighlight();
+                    nextCoordQuestion();
+                } else {
+                    el.classList.add('wrong-tap');
+                    shakeCoordinateBoard();
+                    setTimeout(() => el.classList.remove('wrong-tap'), 400);
+                }
+                return;
+            }
+
+            if (coordState.mode !== 'a') return;
             checkCoordAnswer(sq);
         }
 
@@ -1227,15 +1266,38 @@
         function checkCoordAnswer(answer) {
             coordState.total++;
             const isCorrect = answer === coordState.target;
-            if (isCorrect) coordState.score++;
-            updateCoordScore();
-            const fb = document.getElementById('coordFeedback');
-            fb.textContent = isCorrect ? t('correct') : t('wrong') + ' ' + coordState.target.toUpperCase();
-            fb.style.color = isCorrect ? '#34c759' : '#ff453a';
-            setTimeout(() => {
-                fb.style.color = 'var(--text-secondary)';
-                nextCoordQuestion();
-            }, 1200);
+            if (isCorrect) {
+                coordState.score++;
+                updateCoordScore();
+                const fb = document.getElementById('coordFeedback');
+                fb.textContent = t('correct');
+                fb.style.color = '#34c759';
+                setTimeout(() => {
+                    fb.style.color = 'var(--text-secondary)';
+                    nextCoordQuestion();
+                }, 600);
+            } else {
+                updateCoordScore();
+                const fb = document.getElementById('coordFeedback');
+                fb.textContent = t('wrong') + ' ' + coordState.target.toUpperCase() + ' — ' + (coordState.mode === 'a' ? 'Tap the correct square' : 'Tap the correct square');
+                fb.style.color = '#ff453a';
+                coordState.waitingCorrect = true;
+                shakeCoordinateBoard();
+                markCorrectTarget(coordState.target);
+            }
+        }
+
+        function shakeCoordinateBoard() {
+            const grid = document.getElementById('coordinateBoardGrid');
+            grid.classList.remove('shake');
+            void grid.offsetWidth;
+            grid.classList.add('shake');
+            setTimeout(() => grid.classList.remove('shake'), 500);
+        }
+
+        function markCorrectTarget(sq) {
+            const el = document.querySelector('#coordinateBoardGrid .square[data-square="' + sq + '"]');
+            if (el) el.classList.add('correct-target');
         }
 
         function updateCoordScore() {
@@ -1251,6 +1313,7 @@
         function clearCoordHighlight() {
             document.querySelectorAll('#coordinateBoardGrid .square').forEach(el => {
                 el.style.background = '';
+                el.classList.remove('correct-target', 'wrong-tap');
             });
         }
 
