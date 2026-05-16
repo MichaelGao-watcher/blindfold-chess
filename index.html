@@ -54,7 +54,7 @@
             overflow-x: hidden;
         }
 
-        .theme-toggle {
+        .settings-toggle {
             position: fixed;
             top: 1.5rem;
             right: 1.5rem;
@@ -74,10 +74,47 @@
             z-index: 100;
         }
 
-        .theme-toggle:hover { transform: scale(1.1); box-shadow: 0 4px 20px var(--shadow-hover); }
-        .theme-toggle:active { transform: scale(0.95); }
-        .theme-toggle svg { width: 20px; height: 20px; fill: var(--text-primary); transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), fill var(--transition-speed) ease; }
-        .theme-toggle.spin svg { transform: rotate(180deg); }
+        .settings-toggle:hover { transform: scale(1.1); box-shadow: 0 4px 20px var(--shadow-hover); }
+        .settings-toggle:active { transform: scale(0.95); }
+        .settings-toggle svg { width: 20px; height: 20px; stroke: var(--text-primary); }
+        .settings-toggle.spin svg { transform: rotate(180deg); }
+
+        .settings-panel {
+            position: fixed;
+            top: 4.2rem;
+            right: 1.5rem;
+            width: 200px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.5rem;
+            box-shadow: 0 8px 30px var(--shadow-hover);
+            z-index: 101;
+            opacity: 0;
+            transform: translateY(-8px) scale(0.96);
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        .settings-panel.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.7rem 0.9rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+        .settings-item:hover { background: var(--surface-hover); }
+        .settings-label { font-weight: 500; }
+        .settings-value {
+            font-weight: 600;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+        }
 
 
         .screen {
@@ -270,7 +307,8 @@
         @media (min-width: 768px) { .screen { max-width: 400px; } }
         @media (max-width: 480px) {
             body { padding: 1.5rem; }
-            .theme-toggle { top: 1rem; right: 1rem; }
+            .settings-toggle { top: 1rem; right: 1rem; }
+            .settings-panel { top: 3.7rem; right: 1rem; }
             .mode-card { padding: 1.35rem 1.5rem; }
             .diff-item { padding: 1.1rem 1.3rem; }
             .board-grid { width: 306px; grid-template-columns: 18px repeat(8, 36px); grid-template-rows: repeat(8, 36px) 18px; }
@@ -283,36 +321,46 @@
 </head>
 <body>
 
-    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
-        <svg id="iconSun" viewBox="0 0 24 24" style="display: none;">
-            <circle cx="12" cy="12" r="5"/>
-            <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-        </svg>
-        <svg id="iconMoon" viewBox="0 0 24 24">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <button class="settings-toggle" id="settingsToggle" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.67 15 1.65 1.65 0 0 0 3 14.39V14a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4"></path>
         </svg>
     </button>
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-item" id="themeSetting">
+            <span class="settings-label" data-i18n="themeLabel" id="themeLabelText">Theme</span>
+            <span class="settings-value" id="themeValue">
+                <svg id="panelIconSun" viewBox="0 0 24 24" style="display:none;width:18px;height:18px;stroke:var(--text-primary);fill:none;stroke-width:2;stroke-linecap:round;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg id="panelIconMoon" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--text-primary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+        </div>
+        <div class="settings-item" id="langSetting">
+            <span class="settings-label" data-i18n="langLabel">Language</span>
+            <span class="settings-value" id="langValue">中文</span>
+        </div>
+    </div>
 
     <div class="screen active" id="startScreen">
         <div class="brand">
             <h1>Blindfold Chess</h1>
-            <p>Play chess without seeing the board.</p>
+            <p data-i18n="tagline">Play chess without seeing the board.</p>
         </div>
         <div class="modes">
             <div class="mode-card" onclick="showDifficulty()">
-                <div class="mode-title">Blindfold Practice</div>
-                <div class="mode-desc">Practice blindfold chess against the Stockfish engine at your chosen level.</div>
+                <div class="mode-title" data-i18n="modeBlindfold">Blindfold Practice</div>
+                <div class="mode-desc" data-i18n="modeBlindfoldDesc">Practice blindfold chess against the Stockfish engine at your chosen level.</div>
             </div>
             <div class="mode-card" onclick="selectMode('coordinate')">
-                <div class="mode-title">Coordinate Practice</div>
-                <div class="mode-desc">Train your board vision by identifying squares and calling out coordinates.</div>
+                <div class="mode-title" data-i18n="modeCoordinate">Coordinate Practice</div>
+                <div class="mode-desc" data-i18n="modeCoordinateDesc">Train your board vision by identifying squares and calling out coordinates.</div>
             </div>
             <div class="mode-card" onclick="showGuide()">
-                <div class="mode-title">Wait. I don't even know how…</div>
-                <div class="mode-desc">it's fine. Try this</div>
+                <div class="mode-title" data-i18n="modeGuide">Wait. I don't even know how…</div>
+                <div class="mode-desc" data-i18n="modeGuideDesc">it's fine. Try this</div>
             </div>
         </div>
-        <div class="footer">Tap a mode to begin</div>
+        <div class="footer" data-i18n="tapMode">Tap a mode to begin</div>
     </div>
 
     <div class="screen hidden" id="difficultyScreen">
@@ -320,53 +368,53 @@
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
-            Back
+            <span data-i18n="back">Back</span>
         </button>
         <div class="brand">
-            <h1>Blindfold Practice</h1>
-            <p>Choose a difficulty to face Stockfish.</p>
+            <h1 data-i18n="diffTitle">Blindfold Practice</h1>
+            <p data-i18n="diffSubtitle">Choose a difficulty to face Stockfish.</p>
         </div>
         <div class="difficulty-list">
             <div class="diff-item" onclick="startEngine('easy')">
-                <div class="diff-info"><div class="diff-name">Easy</div><div class="diff-rating">Stockfish ~1200 Elo</div></div>
+                <div class="diff-info"><div class="diff-name" data-i18n="easy">Easy</div><div class="diff-rating" data-i18n="easyRating">Stockfish ~1200 Elo</div></div>
                 <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </div>
             <div class="diff-item" onclick="startEngine('medium')">
-                <div class="diff-info"><div class="diff-name">Medium</div><div class="diff-rating">Stockfish ~1800 Elo</div></div>
+                <div class="diff-info"><div class="diff-name" data-i18n="medium">Medium</div><div class="diff-rating" data-i18n="mediumRating">Stockfish ~1800 Elo</div></div>
                 <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </div>
             <div class="diff-item" onclick="startEngine('hard')">
-                <div class="diff-info"><div class="diff-name">Hard</div><div class="diff-rating">Stockfish ~2200 Elo</div></div>
+                <div class="diff-info"><div class="diff-name" data-i18n="hard">Hard</div><div class="diff-rating" data-i18n="hardRating">Stockfish ~2200 Elo</div></div>
                 <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </div>
             <div class="diff-item" onclick="startEngine('expert')">
-                <div class="diff-info"><div class="diff-name">Expert</div><div class="diff-rating">Stockfish ~2800 Elo</div></div>
+                <div class="diff-info"><div class="diff-name" data-i18n="expert">Expert</div><div class="diff-rating" data-i18n="expertRating">Stockfish ~2800 Elo</div></div>
                 <svg class="diff-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </div>
         </div>
-        <div class="engine-note">Stockfish engine loaded locally.<br>Select a level to start playing.</div>
+        <div class="engine-note" data-i18n="engineNote">Stockfish engine loaded locally.<br>Select a level to start playing.</div>
     </div>
 
     <div class="screen hidden" id="guideScreen">
         <button class="back-btn" onclick="showStartFromGuide()">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            Back
+            <span data-i18n="back">Back</span>
         </button>
         <div class="brand">
-            <h1>Getting Started</h1>
-            <p>Pick where you want to begin.</p>
+            <h1 data-i18n="guideTitle">Getting Started</h1>
+            <p data-i18n="guideSubtitle">Pick where you want to begin.</p>
         </div>
         <div class="modes">
             <div class="mode-card" onclick="showBasics()">
-                <div class="mode-title">Getting Caught Up</div>
-                <div class="mode-desc">I have no idea what I'm doing. I need to start from the basics.</div>
+                <div class="mode-title" data-i18n="guideBasics">Getting Caught Up</div>
+                <div class="mode-desc" data-i18n="guideBasicsDesc">I have no idea what I'm doing. I need to start from the basics.</div>
             </div>
             <div class="mode-card" onclick="showDifficulty()">
-                <div class="mode-title">Practice</div>
-                <div class="mode-desc">Jump straight into a practice game against Stockfish.</div>
+                <div class="mode-title" data-i18n="guidePractice">Practice</div>
+                <div class="mode-desc" data-i18n="guidePracticeDesc">Jump straight into a practice game against Stockfish.</div>
             </div>
             <div class="mode-card" onclick="exitApp()">
-                <div class="mode-title">I'm done with it</div>
+                <div class="mode-title" data-i18n="guideExit">I'm done with it</div>
             </div>
         </div>
     </div>
@@ -374,22 +422,22 @@
     <div class="screen hidden" id="basicsScreen">
         <button class="back-btn" onclick="showGuideFromBasics()">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            Back
+            <span data-i18n="back">Back</span>
         </button>
         <div class="brand">
-            <h1>Basics</h1>
-            <p>Everything you need to get started.</p>
+            <h1 data-i18n="basicsTitle">Basics</h1>
+            <p data-i18n="basicsSubtitle">Everything you need to get started.</p>
         </div>
         <div class="modes" style="text-align:left;gap:1.2rem;">
             <div style="color:var(--text-secondary);font-size:0.95rem;line-height:1.7;padding:0 0.5rem;">
-                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Board Coordinates</p>
-                <p style="margin-bottom:1.2rem;">A chessboard has 8 files (columns a–h) and 8 ranks (rows 1–8). Each square is named by its file letter plus rank number, like <strong>e4</strong> or <strong>d5</strong>.</p>
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;" data-i18n="basicsCoords">Board Coordinates</p>
+                <p style="margin-bottom:1.2rem;" data-i18n="basicsCoordsDesc">A chessboard has 8 files (columns a–h) and 8 ranks (rows 1–8). Each square is named by its file letter plus rank number, like <strong>e4</strong> or <strong>d5</strong>.</p>
                 
-                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Algebraic Notation</p>
-                <p style="margin-bottom:1.2rem;">Moves are written using algebraic notation: <strong>e4</strong> (pawn to e4), <strong>Nf3</strong> (knight to f3), <strong>O-O</strong> (short castle), <strong>Qxd5</strong> (queen takes on d5).</p>
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;" data-i18n="basicsNotation">Algebraic Notation</p>
+                <p style="margin-bottom:1.2rem;" data-i18n="basicsNotationDesc">Moves are written using algebraic notation: <strong>e4</strong> (pawn to e4), <strong>Nf3</strong> (knight to f3), <strong>O-O</strong> (short castle), <strong>Qxd5</strong> (queen takes on d5).</p>
                 
-                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;">Blindfold Chess</p>
-                <p>In blindfold chess, you play without seeing the board. You call out moves in notation, and your opponent (or the engine) replies the same way. Keeping the entire position in your mind is the challenge.</p>
+                <p style="margin-bottom:0.8rem;color:var(--text-primary);font-weight:600;" data-i18n="basicsBlindfold">Blindfold Chess</p>
+                <p data-i18n="basicsBlindfoldDesc">In blindfold chess, you play without seeing the board. You call out moves in notation, and your opponent (or the engine) replies the same way. Keeping the entire position in your mind is the challenge.</p>
                 
             </div>
         </div>
@@ -397,8 +445,8 @@
 
     <div class="screen hidden" id="exitScreen">
         <div class="brand">
-            <h1>See you next time!</h1>
-            <p>You can close this tab whenever you're ready.</p>
+            <h1 data-i18n="exitTitle">See you next time!</h1>
+            <p data-i18n="exitDesc">You can close this tab whenever you're ready.</p>
         </div>
     </div>
 
@@ -428,13 +476,13 @@
         </div>
 
         <div class="game-input">
-            <input type="text" id="moveInput" placeholder="e.g. e4, Nf3, O-O" autocomplete="off" />
-            <button onclick="submitMove()">Go</button>
+            <input type="text" id="moveInput" placeholder="e.g. e4, Nf3, O-O" autocomplete="off" data-i18n="movePlaceholder" />
+            <button onclick="submitMove()" data-i18n="go">Go</button>
         </div>
 
         <div class="game-actions">
-            <button onclick="newGame()">New Game</button>
-            <button onclick="resign()">Resign</button>
+            <button onclick="newGame()" data-i18n="newGame">New Game</button>
+            <button onclick="resign()" data-i18n="resign">Resign</button>
         </div>
     </div>
 
@@ -442,39 +490,228 @@
         <div class="result-card">
             <div class="result-title" id="resultTitle">Game Over</div>
             <div class="result-msg" id="resultMsg">White wins by checkmate!</div>
-            <button onclick="hideResult(); newGame();">Play Again</button>
+            <button onclick="hideResult(); newGame();" data-i18n="playAgain">Play Again</button>
         </div>
     </div>
 
     <script>
+        const i18n = {
+            en: {
+                tagline: "Play chess without seeing the board.",
+                modeBlindfold: "Blindfold Practice",
+                modeBlindfoldDesc: "Practice blindfold chess against the Stockfish engine at your chosen level.",
+                modeCoordinate: "Coordinate Practice",
+                modeCoordinateDesc: "Train your board vision by identifying squares and calling out coordinates.",
+                modeGuide: "Wait. I don't even know how…",
+                modeGuideDesc: "it's fine. Try this",
+                tapMode: "Tap a mode to begin",
+                back: "Back",
+                diffTitle: "Blindfold Practice",
+                diffSubtitle: "Choose a difficulty to face Stockfish.",
+                easy: "Easy",
+                easyRating: "Stockfish ~1200 Elo",
+                medium: "Medium",
+                mediumRating: "Stockfish ~1800 Elo",
+                hard: "Hard",
+                hardRating: "Stockfish ~2200 Elo",
+                expert: "Expert",
+                expertRating: "Stockfish ~2800 Elo",
+                engineNote: "Stockfish engine loaded locally.
+Select a level to start playing.",
+                guideTitle: "Getting Started",
+                guideSubtitle: "Pick where you want to begin.",
+                guideBasics: "Getting Caught Up",
+                guideBasicsDesc: "I have no idea what I'm doing. I need to start from the basics.",
+                guidePractice: "Practice",
+                guidePracticeDesc: "Jump straight into a practice game against Stockfish.",
+                guideExit: "I'm done with it",
+                basicsTitle: "Basics",
+                basicsSubtitle: "Everything you need to get started.",
+                basicsCoords: "Board Coordinates",
+                basicsCoordsDesc: "A chessboard has 8 files (columns a–h) and 8 ranks (rows 1–8). Each square is named by its file letter plus rank number, like e4 or d5.",
+                basicsNotation: "Algebraic Notation",
+                basicsNotationDesc: "Moves are written using algebraic notation: e4 (pawn to e4), Nf3 (knight to f3), O-O (short castle), Qxd5 (queen takes on d5).",
+                basicsBlindfold: "Blindfold Chess",
+                basicsBlindfoldDesc: "In blindfold chess, you play without seeing the board. You call out moves in notation, and your opponent (or the engine) replies the same way. Keeping the entire position in your mind is the challenge.",
+                exitTitle: "See you next time!",
+                exitDesc: "You can close this tab whenever you're ready.",
+                engineReady: "Ready",
+                engineThinking: "Thinking...",
+                boardToggle: "Toggle board",
+                newGameStarted: "New game started. White to move.",
+                movePlaceholder: "e.g. e4, Nf3, O-O",
+                go: "Go",
+                newGame: "New Game",
+                resign: "Resign",
+                resultOver: "Game Over",
+                resultCheckmate: "Checkmate",
+                resultStalemate: "Stalemate",
+                resultDraw: "Draw",
+                whiteWins: "White wins by checkmate!",
+                blackWins: "Black wins by checkmate!",
+                stalemateDraw: "Game drawn by stalemate.",
+                gameDrawn: "Game drawn.",
+                gameEnded: "The game has ended.",
+                playAgain: "Play Again",
+                resigned: "Resigned",
+                resignedMsg: "You resigned. Stockfish wins.",
+                themeDark: "Dark mode",
+                themeLight: "Light mode",
+                settings: "Settings",
+                langLabel: "Language",
+                langZh: "中文",
+                langEn: "English",
+                loadingError: "Failed to load Stockfish. Try refreshing or check console."
+            },
+            zh: {
+                tagline: "不看棋盘，心算对弈。",
+                modeBlindfold: "盲棋练习",
+                modeBlindfoldDesc: "选择难度，与 Stockfish 引擎进行盲棋对弈。",
+                modeCoordinate: "坐标练习",
+                modeCoordinateDesc: "训练你的棋盘视觉，识别格子并喊出坐标。",
+                modeGuide: "等等，我根本不会…",
+                modeGuideDesc: "没关系，从这里开始",
+                tapMode: "点击模式开始",
+                back: "返回",
+                diffTitle: "盲棋练习",
+                diffSubtitle: "选择难度挑战 Stockfish。",
+                easy: "简单",
+                easyRating: "Stockfish ~1200 分",
+                medium: "中等",
+                mediumRating: "Stockfish ~1800 分",
+                hard: "困难",
+                hardRating: "Stockfish ~2200 分",
+                expert: "专家",
+                expertRating: "Stockfish ~2800 分",
+                engineNote: "Stockfish 引擎已加载。
+选择难度开始下棋。",
+                guideTitle: "入门指南",
+                guideSubtitle: "选择你想开始的入口。",
+                guideBasics: "零基础入门",
+                guideBasicsDesc: "我完全不知道怎么下，需要从基础开始。",
+                guidePractice: "直接练习",
+                guidePracticeDesc: "跳过教学，直接与 Stockfish 对弈。",
+                guideExit: "我玩够了",
+                basicsTitle: "基础知识",
+                basicsSubtitle: "入门所需的一切。",
+                basicsCoords: "棋盘坐标",
+                basicsCoordsDesc: "棋盘有 8 条纵线（a–h 列）和 8 条横线（1–8 行）。每个格子由其列字母加行数字命名，例如 e4 或 d5。",
+                basicsNotation: "代数记谱法",
+                basicsNotationDesc: "走法使用代数记谱法书写：e4（兵到 e4）、Nf3（马到 f3）、O-O（短易位）、Qxd5（后在 d5 吃子）。",
+                basicsBlindfold: "盲棋",
+                basicsBlindfoldDesc: "在盲棋中，你看不到棋盘，用记谱法喊出走法，对手（或引擎）同样回复。在脑海中保持整个局面是挑战所在。",
+                exitTitle: "下次见！",
+                exitDesc: "准备好后就可以关闭此标签页。",
+                engineReady: "就绪",
+                engineThinking: "思考中…",
+                boardToggle: "显示/隐藏棋盘",
+                newGameStarted: "新局开始。白方先行。",
+                movePlaceholder: "例如 e4、Nf3、O-O",
+                go: "走棋",
+                newGame: "新局",
+                resign: "认输",
+                resultOver: "对局结束",
+                resultCheckmate: "将杀",
+                resultStalemate: "逼和",
+                resultDraw: "和棋",
+                whiteWins: "白方将杀获胜！",
+                blackWins: "黑方将杀获胜！",
+                stalemateDraw: "逼和，和棋。",
+                gameDrawn: "和棋。",
+                gameEnded: "对局已结束。",
+                playAgain: "再来一局",
+                resigned: "认输",
+                resignedMsg: "你认输了。Stockfish 获胜。",
+                themeDark: "深色模式",
+                themeLight: "浅色模式",
+                settings: "设置",
+                langLabel: "语言",
+                langZh: "中文",
+                langEn: "English",
+                loadingError: "加载 Stockfish 失败。请刷新页面或检查控制台。"
+            }
+        };
+
+        function t(key) {
+            const lang = localStorage.getItem('lang') || 'zh';
+            return (i18n[lang] && i18n[lang][key]) || (i18n.en && i18n.en[key]) || key;
+        }
+
+        function updateTexts() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (el.tagName === 'INPUT' && el.placeholder) {
+                    el.placeholder = t(key);
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+            document.documentElement.lang = localStorage.getItem('lang') === 'en' ? 'en' : 'zh-CN';
+            const langValue = document.getElementById('langValue');
+            if (langValue) {
+                const currentLang = localStorage.getItem('lang') || 'zh';
+                langValue.textContent = currentLang === 'en' ? t('langZh') : t('langEn');
+            }
+            const themeLabel = document.getElementById('themeLabelText');
+            if (themeLabel) {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+                themeLabel.textContent = currentTheme === 'dark' ? t('themeDark') : t('themeLight');
+            }
+            const diffBadge = document.getElementById('diffBadge');
+            if (diffBadge && currentLevel) diffBadge.textContent = t(currentLevel);
+        }
+
+        // Theme logic
         (function() {
             const html = document.documentElement;
-            const toggle = document.getElementById('themeToggle');
-            const iconSun = document.getElementById('iconSun');
-            const iconMoon = document.getElementById('iconMoon');
-
             const saved = localStorage.getItem('theme');
-            if (saved) {
-                html.setAttribute('data-theme', saved);
-                updateIcon(saved);
+            if (saved) html.setAttribute('data-theme', saved);
+
+            function updateThemeIcon(theme) {
+                const sun = document.getElementById('panelIconSun');
+                const moon = document.getElementById('panelIconMoon');
+                if (theme === 'light') { sun.style.display = 'block'; moon.style.display = 'none'; }
+                else { sun.style.display = 'none'; moon.style.display = 'block'; }
+                const label = document.getElementById('themeLabelText');
+                if (label) label.textContent = theme === 'dark' ? t('themeDark') : t('themeLight');
             }
 
-            toggle.addEventListener('click', () => {
+            updateThemeIcon(saved || 'dark');
+
+            document.getElementById('themeSetting').addEventListener('click', () => {
                 const current = html.getAttribute('data-theme') || 'dark';
                 const next = current === 'dark' ? 'light' : 'dark';
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-                updateIcon(next);
-                toggle.classList.add('spin');
-                setTimeout(() => toggle.classList.remove('spin'), 500);
+                updateThemeIcon(next);
             });
-
-            function updateIcon(theme) {
-                if (theme === 'light') { iconSun.style.display = 'block'; iconMoon.style.display = 'none'; }
-                else { iconSun.style.display = 'none'; iconMoon.style.display = 'block'; }
-            }
         })();
 
+        // Settings panel toggle
+        (function() {
+            const toggle = document.getElementById('settingsToggle');
+            const panel = document.getElementById('settingsPanel');
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.classList.toggle('show');
+            });
+            document.addEventListener('click', (e) => {
+                if (!panel.contains(e.target) && e.target !== toggle) {
+                    panel.classList.remove('show');
+                }
+            });
+        })();
+
+        // Language switch
+        document.getElementById('langSetting').addEventListener('click', () => {
+            const current = localStorage.getItem('lang') || 'zh';
+            const next = current === 'en' ? 'zh' : 'en';
+            localStorage.setItem('lang', next);
+            updateTexts();
+        });
+
+        // Initial language apply
+        updateTexts();
 
         function showDifficulty() {
             document.getElementById('startScreen').classList.remove('active');
@@ -606,7 +843,7 @@
 
         function startEngine(level) {
             currentLevel = level;
-            document.getElementById('diffBadge').textContent = level;
+            document.getElementById('diffBadge').textContent = t(level);
             document.getElementById('difficultyScreen').classList.remove('active');
             document.getElementById('difficultyScreen').classList.add('hidden');
             const gs = document.getElementById('gameScreen');
@@ -628,10 +865,10 @@
             game = new Chess();
             boardVisible = false;
             document.getElementById('boardPanel').classList.add('hidden');
-            document.getElementById('moveHistory').innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>';
+            document.getElementById('moveHistory').innerHTML = '<div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">' + t('newGameStarted') + '</div>';
             const input = document.getElementById('moveInput');
             input.value = ''; input.disabled = false;
-            updateEngineStatus('Ready');
+            updateEngineStatus(t('engineReady'));
 
             try {
                 engine = new EngineManager();
@@ -641,7 +878,7 @@
                 engine.newGame();
             } catch (err) {
                 console.error('Engine init failed:', err);
-                document.getElementById('moveHistory').innerHTML = '<div style="color:#ff453a;text-align:center;padding:1rem;">Failed to load Stockfish. Try refreshing or check console.</div>';
+                document.getElementById('moveHistory').innerHTML = '<div style="color:#ff453a;text-align:center;padding:1rem;">' + t('loadingError') + '</div>';
             }
         }
 
@@ -676,7 +913,7 @@
             }
 
             input.disabled = true;
-            updateEngineStatus('Thinking...');
+            updateEngineStatus(t('engineThinking'));
             engine.setPosition(game.fen());
             engine.go();
         }
@@ -684,7 +921,7 @@
         function handleEngineMove(bestMoveUci) {
             if (!bestMoveUci) {
                 document.getElementById('moveInput').disabled = true;
-                updateEngineStatus('Ready');
+                updateEngineStatus(t('engineReady'));
                 return;
             }
 
@@ -704,7 +941,7 @@
             const input = document.getElementById('moveInput');
             input.disabled = false;
             input.focus();
-            updateEngineStatus('Ready');
+            updateEngineStatus(t('engineReady'));
 
             if (game.game_over()) {
                 handleGameOver();
@@ -784,17 +1021,17 @@
             let title, msg;
             if (game.in_checkmate()) {
                 const winner = game.turn() === 'w' ? 'Black' : 'White';
-                title = 'Checkmate';
-                msg = winner + ' wins by checkmate!';
+                title = t('resultCheckmate');
+                msg = (winner === 'White' ? t('whiteWins') : t('blackWins'));
             } else if (game.in_stalemate()) {
-                title = 'Stalemate';
-                msg = 'Game drawn by stalemate.';
+                title = t('resultStalemate');
+                msg = t('stalemateDraw');
             } else if (game.in_draw()) {
-                title = 'Draw';
-                msg = 'Game drawn.';
+                title = t('resultDraw');
+                msg = t('gameDrawn');
             } else {
-                title = 'Game Over';
-                msg = 'The game has ended.';
+                title = t('resultOver');
+                msg = t('gameEnded');
             }
             document.getElementById('resultTitle').textContent = title;
             document.getElementById('resultMsg').textContent = msg;
@@ -812,8 +1049,8 @@
 
         function resign() {
             if (!game || game.game_over()) return;
-            document.getElementById('resultTitle').textContent = 'Resigned';
-            document.getElementById('resultMsg').textContent = 'You resigned. Stockfish wins.';
+            document.getElementById('resultTitle').textContent = t('resigned');
+            document.getElementById('resultMsg').textContent = t('resignedMsg');
             document.getElementById('resultOverlay').classList.add('show');
             document.getElementById('moveInput').disabled = true;
         }
