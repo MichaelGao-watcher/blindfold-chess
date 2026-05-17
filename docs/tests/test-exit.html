@@ -166,3 +166,144 @@
       });
     });
 
+    TestRunner.suite('ExitModule language switching', function() {
+      TestRunner.test('all zh lines appear', function() {
+        mockSettingsLang('zh');
+        var seen = new Set();
+        for (var i = 0; i < 200; i++) {
+          seen.add(window.ExitModule.getRandomLine());
+        }
+        zhSet.forEach(function(line) {
+          TestRunner.assert(seen.has(line), 'missing zh line: ' + line);
+        });
+        clearSettingsMock();
+      });
+
+      TestRunner.test('all en lines appear', function() {
+        mockSettingsLang('en');
+        var seen = new Set();
+        for (var i = 0; i < 200; i++) {
+          seen.add(window.ExitModule.getRandomLine());
+        }
+        enSet.forEach(function(line) {
+          TestRunner.assert(seen.has(line), 'missing en line: ' + line);
+        });
+        clearSettingsMock();
+      });
+
+      TestRunner.test('falls back to zh when SettingsModule missing', function() {
+        clearSettingsMock();
+        var line = window.ExitModule.getRandomLine();
+        TestRunner.assert(zhSet.has(line), 'fallback to zh failed, got: ' + line);
+      });
+
+      TestRunner.test('falls back to zh when SettingsModule returns invalid lang', function() {
+        window.SettingsModule = { get: function() { return 'fr'; } };
+        var line = window.ExitModule.getRandomLine();
+        TestRunner.assert(zhSet.has(line), 'fallback to zh on invalid lang failed, got: ' + line);
+        clearSettingsMock();
+      });
+    });
+
+    TestRunner.suite('ExitModule.showExitScreen', function() {
+      TestRunner.test('shows exitScreen', function() {
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        TestRunner.assert(isActive('exitScreen'), 'exitScreen should be active');
+      });
+
+      TestRunner.test('hides all other screens', function() {
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+        TestRunner.assert(isHidden('gameScreen'), 'gameScreen should be hidden');
+        TestRunner.assert(isHidden('coordinateScreen'), 'coordinateScreen should be hidden');
+      });
+
+      TestRunner.test('injects humor line element', function() {
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        var lineEl = document.querySelector('#exitScreen .exit-humor-line');
+        TestRunner.assert(lineEl !== null, 'humor line element should be injected');
+      });
+
+      TestRunner.test('injects button elements', function() {
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        var confirmBtn = document.getElementById('exitConfirmBtn');
+        var againBtn = document.getElementById('exitAgainBtn');
+        TestRunner.assert(confirmBtn !== null, 'confirm button should be injected');
+        TestRunner.assert(againBtn !== null, 'again button should be injected');
+      });
+
+      TestRunner.test('button labels are Chinese by default', function() {
+        clearSettingsMock();
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        TestRunner.assertEqual(getText('#exitConfirmBtn'), '确认退出');
+        TestRunner.assertEqual(getText('#exitAgainBtn'), '再玩一局');
+      });
+
+      TestRunner.test('button labels switch to English when lang=en', function() {
+        mockSettingsLang('en');
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        TestRunner.assertEqual(getText('#exitConfirmBtn'), 'Confirm Exit');
+        TestRunner.assertEqual(getText('#exitAgainBtn'), 'Play Again');
+        clearSettingsMock();
+      });
+
+      TestRunner.test('humor line text is non-empty after show', function() {
+        clearSettingsMock();
+        resetScreens();
+        window.ExitModule.showExitScreen();
+        var text = getText('#exitScreen .exit-humor-line');
+        TestRunner.assert(text && text.length > 0, 'humor line should not be empty');
+      });
+    });
+
+    TestRunner.suite('ExitModule.init', function() {
+      TestRunner.test('does not throw with valid DOM', function() {
+        resetScreens();
+        var threw = false;
+        try {
+          window.ExitModule.init();
+        } catch (e) {
+          threw = true;
+        }
+        TestRunner.assert(!threw, 'init should not throw with valid DOM');
+      });
+
+      TestRunner.test('injects elements on init', function() {
+        resetScreens();
+        // Rebuild brand to simulate fresh DOM
+        var es = document.getElementById('exitScreen');
+        var brand = es.querySelector('.brand');
+        if (brand) brand.innerHTML = '<h1>See you next time!</h1><p>You can close this tab whenever you\'re ready.</p>';
+        window.ExitModule.init();
+        TestRunner.assert(es.querySelector('.exit-humor-line') !== null, 'humor line should exist after init');
+        TestRunner.assert(document.getElementById('exitConfirmBtn') !== null, 'confirm button should exist after init');
+      });
+    });
+
+    TestRunner.suite('Global pollution check', function() {
+      TestRunner.test('no unexpected globals leaked', function() {
+        TestRunner.assert(typeof window._lines === 'undefined', '_lines leaked');
+        TestRunner.assert(typeof window._lastIndex === 'undefined', '_lastIndex leaked');
+        TestRunner.assert(typeof window._getLang === 'undefined', '_getLang leaked');
+        TestRunner.assert(typeof window._hideAllScreens === 'undefined', '_hideAllScreens leaked');
+        TestRunner.assert(typeof window._showScreen === 'undefined', '_showScreen leaked');
+        TestRunner.assert(typeof window._buildExitScreen === 'undefined', '_buildExitScreen leaked');
+        TestRunner.assert(typeof window._updateButtonLabels === 'undefined', '_updateButtonLabels leaked');
+        TestRunner.assert(typeof window._typewriterTimer === 'undefined', '_typewriterTimer leaked');
+        TestRunner.assert(typeof window._clearTypewriter === 'undefined', '_clearTypewriter leaked');
+        TestRunner.assert(typeof window._startTypewriter === 'undefined', '_startTypewriter leaked');
+      });
+    });
+
+    window.ExitModule._typewriterEnabled = false;
+    TestRunner.run();
+  })();
+  </script>
+</body>
+</html>
