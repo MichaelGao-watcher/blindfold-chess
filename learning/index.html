@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Notes — Blindfold Chess</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #1c1c1e;
+            --surface-hover: #2c2c2e;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --border: rgba(255, 255, 255, 0.1);
+            --shadow: rgba(0, 0, 0, 0.4);
+            --shadow-hover: rgba(0, 0, 0, 0.6);
+            --accent: #0a84ff;
+            --accent-hover: #409cff;
+            --transition-speed: 0.4s;
+        }
+
+        [data-theme="light"] {
+            --bg: #f5f5f7;
+            --surface: #ffffff;
+            --surface-hover: #f2f2f7;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --border: rgba(0, 0, 0, 0.08);
+            --shadow: rgba(0, 0, 0, 0.08);
+            --shadow-hover: rgba(0, 0, 0, 0.14);
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-decoration: none;
+            font-family: inherit;
+            box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.25s ease, background var(--transition-speed) ease;
+            cursor: pointer;
+        }
+        .back-link:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--shadow-hover); }
+        .back-link svg { width: 16px; height: 16px; stroke: var(--text-primary); fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+        .page-title {
+            font-size: clamp(1.6rem, 4vw, 2.2rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-align: center;
+            flex: 1;
+        }
+
+        .theme-btn {
+            width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border);
+            background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 12px var(--shadow); transition: transform 0.2s ease;
+        }
+        .theme-btn:hover { transform: scale(1.08); }
+        .theme-btn svg { width: 20px; height: 20px; stroke: var(--text-primary); fill: none; stroke-width: 2; stroke-linecap: round; }
+
+        /* Section cards */
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 24px var(--shadow);
+            transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 100px;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .section-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        /* Exercise list */
+        .exercise-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .exercise-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.9rem 1rem;
+            border-radius: 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .exercise-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px var(--shadow-hover);
+            background: var(--surface-hover);
+        }
+        .exercise-item .arrow {
+            width: 18px; height: 18px; stroke: var(--text-secondary); fill: none;
+            stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+            transition: transform 0.2s ease, stroke 0.2s ease;
+        }
+        .exercise-item:hover .arrow {
+            transform: translateX(3px);
+            stroke: var(--text-primary);
+        }
+
+        .empty-hint {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 1rem 0;
+            font-style: italic;
+        }
+
+        /* Quick note area */
+        .note-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .note-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+        }
+        .note-input::placeholder { color: var(--text-secondary); opacity: 0.6; }
+
+        .save-btn {
+            align-self: flex-end;
+            margin-top: 0.75rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            box-shadow: 0 2px 12px var(--shadow);
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .save-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .save-btn:active { transform: scale(0.97); }
+
+        /* Notes display */
+        .notes-display {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+        .note-card {
+            padding: 1rem;
+            border-radius: 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            position: relative;
+        }
+        .note-card .note-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+        .note-card .note-delete {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .note-card .note-delete:hover { color: #ff453a; background: rgba(255, 69, 58, 0.1); }
+
+        @media (max-width: 480px) {
+            body { padding: 1.5rem; }
+            .container { gap: 1.5rem; }
+            .section { padding: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="../index.html" class="back-link">
+                <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                返回盲棋
+            </a>
+            <h1 class="page-title">学习笔记</h1>
+            <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">
+                <svg id="iconMoon" viewBox="0 0 24 24" style="display:block;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg id="iconSun" viewBox="0 0 24 24" style="display:none;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                实战练习
+                <span class="badge">Exercises</span>
+            </div>
+            <div class="section-desc">
+                每个练习文件只练一个知识点。打开后可以在浏览器里直接看到效果，随便改、随便试。
+            </div>
+            <div class="exercise-list" id="exerciseList">
+                <div class="empty-hint">暂无练习文件。让 AI 帮你创建一个，比如「01-变量与控制台.html」。</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                随手记
+                <span class="badge">Quick Notes</span>
+            </div>
+            <div class="section-desc">
+                学了什么、有什么疑问、突然明白的道理——随时写，自动保存到浏览器本地。
+            </div>
+            <textarea class="note-input" id="noteInput" placeholder="今天学到了什么？比如：&#10;- console.log() 可以在控制台打印东西&#10;- let 和 const 的区别是...&#10;- 为什么我的按钮点不动？"></textarea>
+            <button class="save-btn" onclick="saveNote()">保存笔记</button>
+            <div class="notes-display" id="notesDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        // Theme sync with main app
+        (function() {
+            const html = document.documentElement;
+            const saved = localStorage.getItem('theme');
+            if (saved) html.setAttribute('data-theme', saved);
+
+            const moon = document.getElementById('iconMoon');
+            const sun = document.getElementById('iconSun');
+
+            function updateIcon() {
+                const t = html.getAttribute('data-theme') || 'dark';
+                moon.style.display = t === 'dark' ? 'block' : 'none';
+                sun.style.display = t === 'dark' ? 'none' : 'block';
+            }
+            updateIcon();
+
+            document.getElementById('themeBtn').addEventListener('click', () => {
+                const current = html.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                updateIcon();
+            });
+        })();
+
+        // Exercise list scanner
+        function scanExercises() {
+            // In a real file system we can't list directory from browser,
+            // so we use a hardcoded list or localStorage. For now, show a helper.
+            const list = document.getElementById('exerciseList');
+            // You can manually add entries here as you create files
+            const exercises = [
+                // Example: { name: "01-变量与控制台", file: "exercises/01-变量.html" }
+            ];
+
+            if (exercises.length === 0) {
+                list.innerHTML = '<div class="empty-hint">暂无练习文件。让 AI 帮你创建一个，比如「01-变量与控制台.html」。<br>文件放在 <code>learning/exercises/</code> 文件夹里即可。</div>';
+                return;
+            }
+
+            list.innerHTML = exercises.map(ex => `
+                <a class="exercise-item" href="${ex.file}">
+                    <span>${ex.name}</span>
+                    <svg class="arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+            `).join('');
+        }
+        scanExercises();
+
+        // Quick notes system (localStorage based)
+        const NOTES_KEY = 'learning_notes';
+
+        function loadNotes() {
+            try {
+                return JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function saveNotes(notes) {
+            localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notesDisplay');
+            const notes = loadNotes();
+            if (notes.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = notes.slice().reverse().map((note, idx) => `
+                <div class="note-card">
+                    <button class="note-delete" onclick="deleteNote(${notes.length - 1 - idx})" title="删除">×</button>
+                    <div class="note-time">${new Date(note.time).toLocaleString('zh-CN')}</div>
+                    <div>${escapeHtml(note.text).replace(/\n/g, '<br>')}</div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function saveNote() {
+            const input = document.getElementById('noteInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const notes = loadNotes();
+            notes.push({ text, time: Date.now() });
+            saveNotes(notes);
+            input.value = '';
+            renderNotes();
+        }
+
+        function deleteNote(index) {
+            const notes = loadNotes();
+            notes.splice(index, 1);
+            saveNotes(notes);
+            renderNotes();
+        }
+
+        renderNotes();
+    </script>
+</body>
+</html>
