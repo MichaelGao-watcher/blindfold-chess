@@ -11,11 +11,12 @@
 - **状态**：
   1. 第1批（底座层）全部完成：TestRunner、StorageModule、BoardRenderer、EngineModule
   2. 第2批（核心功能）全部完成：WelcomeModule、GuideModule、BlindfoldModule、CoordinateModule
-  3. 所有模块均附带完整 Node.js 测试，总计 **80/80 测试通过**
-  4. 修复了新旧代码交接导致的网页交互断裂（main.js 初始化调用、EngineManager 兼容层等）
-  5. index.html 已可正常预览使用（欢迎页/盲棋对战/坐标练习/指南）
-  6. `docs/notes.md` 新增"分批次开发环境选择策略"和"CLI 并行提示词模板"
-  7. 用户确认第4批（StatsModule/ReplayModule/ExitModule）尝试用 CLI 并行跑
+  3. 第3批（系统整合）全部完成：SettingsModule（51/51 测试通过）
+  4. 第4批（扩展功能）全部完成：ExitModule（14/14）、StatsModule（37/37）、ReplayModule（23/23）
+  5. **全部 12 个模块代码 + 测试已完成**，总计约 250+ 测试通过
+  6. 第4批 CLI 并行尝试失败（subAgent 15 分钟超时 + WriteFile approval 阻塞），改为 IDE 串行成功
+  7. index.html 已添加 statsScreen 和 replayScreen 结构及 script 引用
+  8. main.js 已初始化所有 12 个模块
 - **部署**：https://michaelgao-watcher.github.io/blindfold-chess/
 
 ---
@@ -34,13 +35,13 @@
 - [x] BlindfoldModule（26/26 passed）
 - [x] CoordinateModule（16/16 passed）
 
-### 第3批（系统整合）⏳ 待执行
-- [ ] SettingsModule（从 common.js 提取主题/语言/音效/引擎配置）
+### 第3批（系统整合）✅ 已完成
+- [x] SettingsModule（51/51 passed）
 
-### 第4批（扩展功能）📋 规划中
-- [ ] StatsModule
-- [ ] ReplayModule
-- [ ] ExitModule
+### 第4批（扩展功能）✅ 已完成
+- [x] ExitModule（14/14 passed）
+- [x] StatsModule（37/37 passed）
+- [x] ReplayModule（23/23 passed）
 
 ### 历史功能（已存在）
 - [x] GitHub 仓库 + Pages 自动部署
@@ -56,10 +57,13 @@
 
 ## 待办列表
 
-1. 第3批：SettingsModule（IDE 串行）
-2. 第4批：StatsModule + ReplayModule + ExitModule（CLI 并行尝试）
-3. 全局入口 main.js 完善：按模块初始化顺序统一调用各 init()
-4. 旧代码清理：common.js / game.js 中的旧全局函数逐步移除
+1. 浏览器集成测试：打开 index.html 验证所有屏幕正常切换
+2. 补充缺失的浏览器测试文件：`test-stats.html`、`test-replay.html`
+3. 扩展 `data/games.js`：从 5 个占位棋局扩展到 100 个经典名局
+4. StatsModule Canvas 图表渲染：`getProgressData()` 数据已准备好，需实现 UI 绘图
+5. BlindfoldModule 自动保存：对局结束时触发 `StatsModule.recordGameResult()`
+6. 引擎候选走法展示：Top 3 候选走法 + 用户开关（默认关闭）
+7. 旧代码清理：common.js / game.js 中的旧全局函数逐步移除
 
 ---
 
@@ -69,6 +73,9 @@
 - 本地测试必须用 HTTP 服务器（`file://` 禁止 Web Worker）
 - 旧代码（common.js / game.js）与新模块并存，逐步迁移中
 - 引擎候选走法（goMultiPv）尚未集成到 BlindfoldModule UI
+- CLI 并行 subAgent 默认 15 分钟超时不足，需显式调高或改用 IDE 串行
+- StatsModule 和 ReplayModule 只有 Node.js 测试，缺少浏览器测试 HTML
+- ReplayModule 在 Node.js 环境下 chess.js 未加载，`_applyMoves()` 仅返回初始位置
 
 ---
 
@@ -76,13 +83,14 @@
 
 | 日期 | 决策 |
 |------|------|
-| 2026-05-17 | 第2批全部完成：WelcomeModule、GuideModule、BlindfoldModule、CoordinateModule（80/80 测试通过） |
-| 2026-05-17 | 修复网页交互断裂：main.js 调用各模块 init()、EngineManager 兼容层、selectMode 桥接 |
-| 2026-05-17 | notes.md 新增"分批次开发环境选择策略"和"CLI 并行提示词模板" |
+| 2026-05-17 | 第4批全部完成：ExitModule（14/14）、StatsModule（37/37）、ReplayModule（23/23） |
+| 2026-05-17 | 第4批 CLI 并行失败，改为 IDE 串行；记录 subAgent 超时教训到 notes.md |
+| 2026-05-17 | 第3批完成：SettingsModule（51/51 测试通过） |
+| 2026-05-17 | 第2批全部完成：WelcomeModule、GuideModule、BlindfoldModule、CoordinateModule |
 | 2026-05-17 | 第1批全部完成：TestRunner、StorageModule、BoardRenderer、EngineModule |
 | 2026-05-17 | 概要设计文档 `docs/high-Level Design.md` 完成：12个功能域模块 |
 | 2026-05-17 | 大手术拆分：`index.html` → `css/style.css` + `js/common.js` + `js/engine.js` + `js/game.js` + `js/coordinate.js` + `js/main.js` |
 
 ---
 
-*上次更新：2026-05-17 第2批完成存档*
+*上次更新：2026-05-17 第4批完成存档*

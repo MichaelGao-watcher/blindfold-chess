@@ -1,16 +1,23 @@
 /**
  * Node.js test runner for ExitModule.
+ * Provides a minimal DOM mock so that exit.js can load and run
+ * without a real browser.
  */
 
 'use strict';
 
-// ── Minimal DOM Mock ──
+// =====================================================================
+//  Minimal DOM Mock
+// =====================================================================
 
 class MockClassList {
   constructor() { this._set = new Set(); }
   add(c) { this._set.add(c); }
   remove(c) { this._set.delete(c); }
-  toggle(c) { if (this._set.has(c)) { this._set.delete(c); return false; } this._set.add(c); return true; }
+  toggle(c) {
+    if (this._set.has(c)) { this._set.delete(c); return false; }
+    this._set.add(c); return true;
+  }
   contains(c) { return this._set.has(c); }
 }
 
@@ -18,7 +25,7 @@ class MockElement {
   constructor(tagName) {
     this.tagName = (tagName || 'div').toLowerCase();
     this.id = '';
-    this.classList = new MockClassList();
+    this._classList = new MockClassList();
     this.style = {};
     this.children = [];
     this._parent = null;
@@ -27,9 +34,21 @@ class MockElement {
     this._listeners = {};
   }
 
+  get classList() { return this._classList; }
+
+  get className() { return Array.from(this._classList._set).join(' '); }
+  set className(v) {
+    this._classList._set.clear();
+    if (v) v.split(/\s+/).forEach(function(c) { if (c) this._classList._set.add(c); }.bind(this));
+  }
+
   get parentNode() { return this._parent; }
 
-  setAttribute(k, v) { this._attrs.set(k, String(v)); if (k === 'id') this.id = String(v); }
+  setAttribute(k, v) {
+    this._attrs.set(k, String(v));
+    if (k === 'id') this.id = String(v);
+  }
+
   getAttribute(k) { return this._attrs.get(k) || null; }
   removeAttribute(k) { this._attrs.delete(k); }
 
@@ -42,7 +61,10 @@ class MockElement {
 
   removeChild(child) {
     const idx = this.children.indexOf(child);
-    if (idx !== -1) { this.children.splice(idx, 1); child._parent = null; }
+    if (idx !== -1) {
+      this.children.splice(idx, 1);
+      child._parent = null;
+    }
     return child;
   }
 
@@ -89,9 +111,12 @@ class MockElement {
     return !ev.defaultPrevented;
   }
 
-  querySelector(sel) {
-    const all = this.querySelectorAll(sel);
-    return all.length > 0 ? all[0] : null;
+  contains(node) {
+    if (node === this) return true;
+    for (const child of this.children) {
+      if (child.contains && child.contains(node)) return true;
+    }
+    return false;
   }
 
   querySelectorAll(sel) {
@@ -121,47 +146,22 @@ class MockElement {
     return results;
   }
 
+  querySelector(sel) {
+    const all = this.querySelectorAll(sel);
+    return all.length > 0 ? all[0] : null;
+  }
+
   get textContent() { return this._textContent; }
   set textContent(v) { this._textContent = String(v); }
 }
 
-class MockDocument {
+class MockDocumentElement {
   constructor() {
-    this._byId = new Map();
-    this.documentElement = { lang: 'zh-CN', setAttribute() {}, getAttribute() { return null; } };
-    this.body = this.createElement('body');
+    this.lang = 'zh-CN';
+    this._attrs = new Map();
   }
-
-  createElement(tag) { return new MockElement(tag); }
-
-  getElementById(id) {
-    function walk(el) {
-      if (el.id === id) return el;
-      for (const c of el.children) { const f = walk(c); if (f) return f; }
-      return null;
-    }
-    const fromBody = walk(this.body);
-    if (fromBody) return fromBody;
-    return this._byId.get(id) || null;
-  }
-
-  querySelectorAll(sel) {
-    const results = [];
-    const walk = (el) => {
-      for (const child of el.children) {
-        if (sel.startsWith('.')) {
-          if (child.classList.contains(sel.slice(1))) results.push(child);
-        }
-        walk(child);
-      }
-    };
-    walk(this.body);
-    return results;
-  }
-
-  _register(el) {
-    if (el.id) this._byId.set(el.id, el);
-  }
+  setAttribute(k, v) { this._attrs.set(k, String(v)); }
+  getAttribute(k) { return this._attrs.get(k) || null; }
 }
 
 class MockEvent {
@@ -169,7 +169,9 @@ class MockEvent {
     this.type = type;
     this.bubbles = opts && opts.bubbles;
     this.defaultPrevented = false;
+    this.target = opts && opts.target || null;
   }
+  stopPropagation() {}
   preventDefault() { this.defaultPrevented = true; }
 }
 
@@ -181,10 +183,52 @@ class MockStorage {
   clear() { this._data.clear(); }
 }
 
-// ── Inject globals ──
+// Build document mock
+const docEl = new MockDocumentElement();
+const body = new MockElement('body');
 
-const doc = new MockDocument();
-global.document = doc;
+const _doc = {
+  documentElement: docEl,
+  body: body,
+  createElement(tag) { return new MockElement(tag); },
+
+  getElementById(id) {
+    function walk(el) {
+      if (el.id === id) return el;
+      for (const child of el.children) {
+        const found = walk(child);
+        if (found) return found;
+      }
+      return null;
+    }
+    return walk(body);
+  },
+
+  querySelectorAll(sel) {
+    const results = [];
+    const walk = (el) => {
+      for (const child of el.children) {
+        if (sel.startsWith('.')) {
+          if (child.classList.contains(sel.slice(1))) results.push(child);
+        }
+        walk(child);
+      }
+    };
+    walk(body);
+    return results;
+  },
+
+  querySelector(sel) {
+    const all = this.querySelectorAll(sel);
+    return all.length > 0 ? all[0] : null;
+  }
+};
+
+// =====================================================================
+//  Inject globals
+// =====================================================================
+
+global.document = _doc;
 global.window = global;
 global.localStorage = new MockStorage();
 global.sessionStorage = new MockStorage();
@@ -192,31 +236,63 @@ global.requestAnimationFrame = function(fn) { fn(); return 0; };
 global.cancelAnimationFrame = function() {};
 global.Event = MockEvent;
 
-// ── Build minimal DOM tree ──
+// =====================================================================
+//  Build minimal DOM tree matching index.html exitScreen area
+// =====================================================================
 
 function makeEl(tag, opts) {
   opts = opts || {};
-  const el = doc.createElement(tag);
-  if (opts.id) { el.id = opts.id; doc._register(el); }
-  if (opts.className) opts.className.split(/\s+/).forEach(c => { if (c) el.classList.add(c); });
+  const el = _doc.createElement(tag);
+  if (opts.id) el.id = opts.id;
+  if (opts.className) {
+    opts.className.split(/\s+/).forEach(function(c) {
+      if (c) el.classList.add(c);
+    });
+  }
   if (opts.text) el.textContent = opts.text;
   if (opts.parent) opts.parent.appendChild(el);
+  if (opts.attr) {
+    for (const k in opts.attr) el.setAttribute(k, opts.attr[k]);
+  }
   return el;
 }
 
-const startScreen = makeEl('div', { id: 'startScreen', className: 'screen active', parent: doc.body });
-const exitScreen = makeEl('div', { id: 'exitScreen', className: 'screen hidden', parent: doc.body });
-makeEl('div', { className: 'brand', parent: exitScreen });
+// Several screens to test showExitScreen switching
+makeEl('div', { id: 'startScreen', className: 'screen active', parent: body });
+makeEl('div', { id: 'gameScreen', className: 'screen hidden', parent: body });
+makeEl('div', { id: 'coordinateScreen', className: 'screen hidden', parent: body });
 
-// ── Load dependencies ──
+// The exitScreen itself
+const exitScreen = makeEl('div', { id: 'exitScreen', className: 'screen hidden', parent: body });
+const exitBrand = makeEl('div', { className: 'brand', parent: exitScreen });
+makeEl('h1', { attr: { 'data-i18n': 'exitTitle' }, text: 'See you next time!', parent: exitBrand });
+makeEl('p', { attr: { 'data-i18n': 'exitDesc' }, text: "You can close this tab whenever you're ready.", parent: exitBrand });
+
+// =====================================================================
+//  Load dependencies
+// =====================================================================
 
 require('../../js/test-runner.js');
 require('../../js/exit.js');
+window.ExitModule._typewriterEnabled = false;
 
-// ── Helpers ──
+// =====================================================================
+//  Helper utilities
+// =====================================================================
 
-function resetStorage() {
-  localStorage.clear();
+function resetScreens() {
+  ['startScreen', 'gameScreen', 'coordinateScreen', 'exitScreen'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('active');
+      el.classList.add('hidden');
+    }
+  });
+  const start = document.getElementById('startScreen');
+  if (start) {
+    start.classList.remove('hidden');
+    start.classList.add('active');
+  }
 }
 
 function isActive(id) {
@@ -229,99 +305,275 @@ function isHidden(id) {
   return !el || el.classList.contains('hidden');
 }
 
-function getText(id) {
-  const el = document.getElementById(id);
+function getText(sel) {
+  const el = (typeof sel === 'string' && sel.startsWith('#'))
+    ? document.getElementById(sel.slice(1))
+    : exitScreen.querySelector(sel);
   return el ? el.textContent : null;
 }
 
-// ── Test suites ──
+function mockSettingsLang(lang) {
+  window.SettingsModule = {
+    get: function(key) {
+      if (key === 'lang') return lang;
+      return null;
+    }
+  };
+}
+
+function clearSettingsMock() {
+  delete window.SettingsModule;
+}
+
+// =====================================================================
+//  Test suites
+// =====================================================================
 
 TestRunner.suite('ExitModule API', function() {
   TestRunner.test('ExitModule exposed on window', function() {
     TestRunner.assert(typeof window.ExitModule === 'object', 'ExitModule not exposed');
   });
+
   TestRunner.test('init is a function', function() {
-    TestRunner.assert(typeof window.ExitModule.init === 'function');
+    TestRunner.assert(typeof window.ExitModule.init === 'function', 'init not a function');
   });
+
   TestRunner.test('showExitScreen is a function', function() {
-    TestRunner.assert(typeof window.ExitModule.showExitScreen === 'function');
+    TestRunner.assert(typeof window.ExitModule.showExitScreen === 'function', 'showExitScreen not a function');
   });
+
   TestRunner.test('getRandomLine is a function', function() {
-    TestRunner.assert(typeof window.ExitModule.getRandomLine === 'function');
+    TestRunner.assert(typeof window.ExitModule.getRandomLine === 'function', 'getRandomLine not a function');
   });
 });
 
-TestRunner.suite('ExitModule.getRandomLine', function() {
-  TestRunner.test('returns a non-empty string', function() {
-    var line = window.ExitModule.getRandomLine();
-    TestRunner.assert(typeof line === 'string' && line.length > 0, 'line should be non-empty string');
+TestRunner.suite('ExitModule.getRandomLine — coverage', function() {
+  const zhSet = new Set([
+    '这对我来说太难了，我要去打开 TikTok 放松一下',
+    '一代天才，就此陨落',
+    '我的棋子刚才集体辞职了，说压力太大',
+    '大脑内存不足，请关闭部分脑细胞再试',
+    '棋手未老，棋先丢，盲棋不易，且行且珍惜',
+    '此局太虐，朕要退朝了',
+    '我的盲棋生涯，始于雄心，终于失忆',
+    '对方一定开了挂，我要下线去举报',
+    '我只是在测试浏览器的关闭按钮灵不灵',
+    '棋输人不输，TikTok 不能不看',
+    '看来我的脑内棋盘需要系统维护了',
+    '这不是退出，这是战略性转移'
+  ]);
+
+  const enSet = new Set([
+    "This is too hard for me. I'm going to open TikTok and relax.",
+    'A brilliant mind, fallen just like that.',
+    'My pieces just resigned collectively. Too much pressure.',
+    'Brain memory insufficient. Please close some neurons and try again.',
+    'The player is not old, but the pieces are lost. Blindfold chess is hard—cherish every move.',
+    'This game is too brutal. His Majesty is leaving the court.',
+    'My blindfold career began with ambition, ended with amnesia.',
+    "The opponent must be cheating. I'm logging off to report them.",
+    "I'm just testing if the browser close button works.",
+    'Lost the game, not my dignity. TikTok is waiting.',
+    'Looks like my mental chessboard needs system maintenance.',
+    "This isn't quitting. It's a strategic retreat."
+  ]);
+
+  TestRunner.test('returns one of the Chinese lines by default', function() {
+    clearSettingsMock();
+    const line = window.ExitModule.getRandomLine();
+    TestRunner.assert(zhSet.has(line), 'unexpected default line: ' + line);
   });
 
-  TestRunner.test('returns Chinese by default', function() {
-    resetStorage();
-    var line = window.ExitModule.getRandomLine();
-    // Check it contains Chinese characters
-    TestRunner.assert(/[\u4e00-\u9fff]/.test(line), 'should contain Chinese characters by default');
+  TestRunner.test('returns one of the English lines when lang=en', function() {
+    mockSettingsLang('en');
+    const line = window.ExitModule.getRandomLine();
+    TestRunner.assert(enSet.has(line), 'unexpected en line: ' + line);
+    clearSettingsMock();
   });
 
-  TestRunner.test('returns English when lang=en', function() {
-    localStorage.setItem('lang', 'en');
-    var line = window.ExitModule.getRandomLine();
-    TestRunner.assert(!/[\u4e00-\u9fff]/.test(line), 'should not contain Chinese when lang=en');
-  });
-
-  TestRunner.test('does not return same line consecutively (with >1 lines)', function() {
-    resetStorage();
-    var prev = '';
-    var allSame = true;
-    for (var i = 0; i < 20; i++) {
-      var line = window.ExitModule.getRandomLine();
-      if (line !== prev) allSame = false;
-      prev = line;
-    }
-    TestRunner.assert(!allSame, 'should vary over 20 calls');
-  });
-
-  TestRunner.test('covers multiple unique lines over many calls', function() {
-    resetStorage();
-    var seen = new Set();
-    for (var i = 0; i < 50; i++) {
+  TestRunner.test('full zh coverage within 200 draws', function() {
+    clearSettingsMock();
+    const seen = new Set();
+    for (var i = 0; i < 200; i++) {
       seen.add(window.ExitModule.getRandomLine());
     }
-    TestRunner.assert(seen.size >= 4, 'should cover at least 4 unique lines over 50 calls, got ' + seen.size);
+    TestRunner.assertEqual(seen.size, 12, 'expected all 12 zh lines, got ' + seen.size);
+  });
+
+  TestRunner.test('full en coverage within 200 draws', function() {
+    mockSettingsLang('en');
+    const seen = new Set();
+    for (var i = 0; i < 200; i++) {
+      seen.add(window.ExitModule.getRandomLine());
+    }
+    TestRunner.assertEqual(seen.size, 12, 'expected all 12 en lines, got ' + seen.size);
+    clearSettingsMock();
+  });
+
+  TestRunner.test('does not return the same line consecutively too often', function() {
+    clearSettingsMock();
+    var prev = window.ExitModule.getRandomLine();
+    var repeats = 0;
+    for (var i = 0; i < 20; i++) {
+      var curr = window.ExitModule.getRandomLine();
+      if (curr === prev) repeats++;
+      prev = curr;
+    }
+    TestRunner.assert(repeats <= 2, 'too many consecutive repeats: ' + repeats);
+  });
+});
+
+TestRunner.suite('ExitModule language switching', function() {
+  const zhLines = [
+    '这对我来说太难了，我要去打开 TikTok 放松一下',
+    '一代天才，就此陨落',
+    '我的棋子刚才集体辞职了，说压力太大',
+    '大脑内存不足，请关闭部分脑细胞再试',
+    '棋手未老，棋先丢，盲棋不易，且行且珍惜',
+    '此局太虐，朕要退朝了',
+    '我的盲棋生涯，始于雄心，终于失忆',
+    '对方一定开了挂，我要下线去举报',
+    '我只是在测试浏览器的关闭按钮灵不灵',
+    '棋输人不输，TikTok 不能不看',
+    '看来我的脑内棋盘需要系统维护了',
+    '这不是退出，这是战略性转移'
+  ];
+
+  const enLines = [
+    "This is too hard for me. I'm going to open TikTok and relax.",
+    'A brilliant mind, fallen just like that.',
+    'My pieces just resigned collectively. Too much pressure.',
+    'Brain memory insufficient. Please close some neurons and try again.',
+    'The player is not old, but the pieces are lost. Blindfold chess is hard—cherish every move.',
+    'This game is too brutal. His Majesty is leaving the court.',
+    'My blindfold career began with ambition, ended with amnesia.',
+    "The opponent must be cheating. I'm logging off to report them.",
+    "I'm just testing if the browser close button works.",
+    'Lost the game, not my dignity. TikTok is waiting.',
+    'Looks like my mental chessboard needs system maintenance.',
+    "This isn't quitting. It's a strategic retreat."
+  ];
+
+  TestRunner.test('all zh lines appear', function() {
+    mockSettingsLang('zh');
+    var seen = new Set();
+    for (var i = 0; i < 200; i++) {
+      seen.add(window.ExitModule.getRandomLine());
+    }
+    zhLines.forEach(function(line) {
+      TestRunner.assert(seen.has(line), 'missing zh line: ' + line);
+    });
+    clearSettingsMock();
+  });
+
+  TestRunner.test('all en lines appear', function() {
+    mockSettingsLang('en');
+    var seen = new Set();
+    for (var i = 0; i < 200; i++) {
+      seen.add(window.ExitModule.getRandomLine());
+    }
+    enLines.forEach(function(line) {
+      TestRunner.assert(seen.has(line), 'missing en line: ' + line);
+    });
+    clearSettingsMock();
+  });
+
+  TestRunner.test('falls back to zh when SettingsModule missing', function() {
+    clearSettingsMock();
+    var line = window.ExitModule.getRandomLine();
+    var knownZh = new Set(zhLines);
+    TestRunner.assert(knownZh.has(line), 'fallback to zh failed, got: ' + line);
+  });
+
+  TestRunner.test('falls back to zh when SettingsModule returns invalid lang', function() {
+    window.SettingsModule = { get: function() { return 'fr'; } };
+    var line = window.ExitModule.getRandomLine();
+    var knownZh = new Set(zhLines);
+    TestRunner.assert(knownZh.has(line), 'fallback to zh on invalid lang failed, got: ' + line);
+    clearSettingsMock();
   });
 });
 
 TestRunner.suite('ExitModule.showExitScreen', function() {
-  TestRunner.test('shows exitScreen and hides startScreen', function() {
-    resetStorage();
+  TestRunner.test('shows exitScreen', function() {
+    resetScreens();
     window.ExitModule.showExitScreen();
     TestRunner.assert(isActive('exitScreen'), 'exitScreen should be active');
+  });
+
+  TestRunner.test('hides all other screens', function() {
+    resetScreens();
+    window.ExitModule.showExitScreen();
     TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+    TestRunner.assert(isHidden('gameScreen'), 'gameScreen should be hidden');
+    TestRunner.assert(isHidden('coordinateScreen'), 'coordinateScreen should be hidden');
   });
 
-  TestRunner.test('injects line text into exitScreen', function() {
-    resetStorage();
+  TestRunner.test('injects humor line element', function() {
+    resetScreens();
     window.ExitModule.showExitScreen();
-    var line = getText('exitLine');
-    TestRunner.assert(typeof line === 'string' && line.length > 0, 'exitLine should have text');
+    var lineEl = exitScreen.querySelector('.exit-humor-line');
+    TestRunner.assert(lineEl !== null, 'humor line element should be injected');
   });
 
-  TestRunner.test('injects buttons into exitScreen', function() {
-    resetStorage();
+  TestRunner.test('injects button elements', function() {
+    resetScreens();
     window.ExitModule.showExitScreen();
-    var againBtn = document.getElementById('exitAgainBtn');
     var confirmBtn = document.getElementById('exitConfirmBtn');
-    TestRunner.assert(againBtn !== null, 'again button should exist');
-    TestRunner.assert(confirmBtn !== null, 'confirm button should exist');
+    var againBtn = document.getElementById('exitAgainBtn');
+    TestRunner.assert(confirmBtn !== null, 'confirm button should be injected');
+    TestRunner.assert(againBtn !== null, 'again button should be injected');
+  });
+
+  TestRunner.test('button labels are Chinese by default', function() {
+    clearSettingsMock();
+    resetScreens();
+    window.ExitModule.showExitScreen();
+    TestRunner.assertEqual(getText('#exitConfirmBtn'), '确认退出');
+    TestRunner.assertEqual(getText('#exitAgainBtn'), '再玩一局');
+  });
+
+  TestRunner.test('button labels switch to English when lang=en', function() {
+    mockSettingsLang('en');
+    resetScreens();
+    window.ExitModule.showExitScreen();
+    TestRunner.assertEqual(getText('#exitConfirmBtn'), 'Confirm Exit');
+    TestRunner.assertEqual(getText('#exitAgainBtn'), 'Play Again');
+    clearSettingsMock();
+  });
+
+  TestRunner.test('humor line text is non-empty after show', function() {
+    clearSettingsMock();
+    resetScreens();
+    window.ExitModule.showExitScreen();
+    var text = getText('.exit-humor-line');
+    TestRunner.assert(text && text.length > 0, 'humor line should not be empty');
   });
 });
 
 TestRunner.suite('ExitModule.init', function() {
   TestRunner.test('does not throw with valid DOM', function() {
+    resetScreens();
     var threw = false;
-    try { window.ExitModule.init(); } catch (e) { threw = true; }
-    TestRunner.assert(!threw, 'init should not throw');
+    try {
+      window.ExitModule.init();
+    } catch (e) {
+      threw = true;
+    }
+    TestRunner.assert(!threw, 'init should not throw with valid DOM');
+  });
+
+  TestRunner.test('injectes elements on init', function() {
+    resetScreens();
+    // Clear any previously injected elements by rebuilding the brand
+    exitBrand.children.length = 0;
+    // Re-add original children
+    makeEl('h1', { attr: { 'data-i18n': 'exitTitle' }, text: 'See you next time!', parent: exitBrand });
+    makeEl('p', { attr: { 'data-i18n': 'exitDesc' }, text: "You can close this tab whenever you're ready.", parent: exitBrand });
+
+    window.ExitModule.init();
+    TestRunner.assert(exitScreen.querySelector('.exit-humor-line') !== null, 'humor line should exist after init');
+    TestRunner.assert(document.getElementById('exitConfirmBtn') !== null, 'confirm button should exist after init');
   });
 });
 
@@ -330,11 +582,19 @@ TestRunner.suite('Global pollution check', function() {
     TestRunner.assert(typeof window._lines === 'undefined', '_lines leaked');
     TestRunner.assert(typeof window._lastIndex === 'undefined', '_lastIndex leaked');
     TestRunner.assert(typeof window._getLang === 'undefined', '_getLang leaked');
+    TestRunner.assert(typeof window._hideAllScreens === 'undefined', '_hideAllScreens leaked');
+    TestRunner.assert(typeof window._showScreen === 'undefined', '_showScreen leaked');
     TestRunner.assert(typeof window._buildExitScreen === 'undefined', '_buildExitScreen leaked');
+    TestRunner.assert(typeof window._updateButtonLabels === 'undefined', '_updateButtonLabels leaked');
+    TestRunner.assert(typeof window._typewriterTimer === 'undefined', '_typewriterTimer leaked');
+    TestRunner.assert(typeof window._clearTypewriter === 'undefined', '_clearTypewriter leaked');
+    TestRunner.assert(typeof window._startTypewriter === 'undefined', '_startTypewriter leaked');
   });
 });
 
-// ── Run ──
+// =====================================================================
+//  Run
+// =====================================================================
 TestRunner.run().then(function(result) {
   if (result.failed > 0) {
     console.error('Tests failed: ' + result.failed);

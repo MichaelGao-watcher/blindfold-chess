@@ -408,6 +408,8 @@ blindfold-chess/
 
 ### 执行指令（给 AI 的触发词）
 
+> ⚠️ **实际执行记录**：CLI 并行尝试因 subAgent 15 分钟超时 + WriteFile approval 阻塞而失败，最终改为 IDE 串行完成。如再次使用 CLI 并行，请将 subAgent `timeout` 显式设为 1800~3600 秒。
+
 ```
 你是项目总控（Orchestrator）。当前项目已完成第1-3批（底座层 + 核心功能 + SettingsModule）。
 现在执行第4批扩展功能。请同时创建三个 subAgent 并行执行：

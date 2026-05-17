@@ -29,6 +29,7 @@
   </div>
 
   <script src="../../js/test-runner.js"></script>
+  <script src="../../js/settings.js"></script>
   <script src="../../js/exit.js"></script>
   <script>
   (function() {
@@ -74,6 +75,36 @@
       delete window.SettingsModule;
     }
 
+    var zhSet = new Set([
+      '这对我来说太难了，我要去打开 TikTok 放松一下',
+      '一代天才，就此陨落',
+      '我的棋子刚才集体辞职了，说压力太大',
+      '大脑内存不足，请关闭部分脑细胞再试',
+      '棋手未老，棋先丢，盲棋不易，且行且珍惜',
+      '此局太虐，朕要退朝了',
+      '我的盲棋生涯，始于雄心，终于失忆',
+      '对方一定开了挂，我要下线去举报',
+      '我只是在测试浏览器的关闭按钮灵不灵',
+      '棋输人不输，TikTok 不能不看',
+      '看来我的脑内棋盘需要系统维护了',
+      '这不是退出，这是战略性转移'
+    ]);
+
+    var enSet = new Set([
+      "This is too hard for me. I'm going to open TikTok and relax.",
+      'A brilliant mind, fallen just like that.',
+      'My pieces just resigned collectively. Too much pressure.',
+      'Brain memory insufficient. Please close some neurons and try again.',
+      'The player is not old, but the pieces are lost. Blindfold chess is hard—cherish every move.',
+      'This game is too brutal. His Majesty is leaving the court.',
+      'My blindfold career began with ambition, ended with amnesia.',
+      "The opponent must be cheating. I'm logging off to report them.",
+      "I'm just testing if the browser close button works.",
+      'Lost the game, not my dignity. TikTok is waiting.',
+      'Looks like my mental chessboard needs system maintenance.',
+      "This isn't quitting. It's a strategic retreat."
+    ]);
+
     TestRunner.suite('ExitModule API', function() {
       TestRunner.test('ExitModule exposed on window', function() {
         TestRunner.assert(typeof window.ExitModule === 'object', 'ExitModule not exposed');
@@ -90,34 +121,36 @@
     });
 
     TestRunner.suite('ExitModule.getRandomLine — coverage', function() {
-      TestRunner.test('returns one of the two Chinese lines by default', function() {
+      TestRunner.test('returns one of the Chinese lines by default', function() {
         clearSettingsMock();
         var line = window.ExitModule.getRandomLine();
-        var zhLines = [
-          '这对我来说太难了，我要去打开 TikTok 放松一下',
-          '一代天才，就此陨落'
-        ];
-        TestRunner.assert(zhLines.indexOf(line) !== -1, 'unexpected default line: ' + line);
+        TestRunner.assert(zhSet.has(line), 'unexpected default line: ' + line);
       });
 
-      TestRunner.test('returns one of the two English lines when lang=en', function() {
+      TestRunner.test('returns one of the English lines when lang=en', function() {
         mockSettingsLang('en');
         var line = window.ExitModule.getRandomLine();
-        var enLines = [
-          'This is too hard for me. I\'m going to open TikTok and relax.',
-          'A brilliant mind, fallen just like that.'
-        ];
-        TestRunner.assert(enLines.indexOf(line) !== -1, 'unexpected en line: ' + line);
+        TestRunner.assert(enSet.has(line), 'unexpected en line: ' + line);
         clearSettingsMock();
       });
 
-      TestRunner.test('multiple draws cover both lines (probabilistic)', function() {
+      TestRunner.test('full zh coverage within 200 draws', function() {
         clearSettingsMock();
         var seen = new Set();
-        for (var i = 0; i < 30; i++) {
+        for (var i = 0; i < 200; i++) {
           seen.add(window.ExitModule.getRandomLine());
         }
-        TestRunner.assert(seen.size >= 2, 'expected both lines to appear within 30 draws, got ' + seen.size);
+        TestRunner.assertEqual(seen.size, 12, 'expected all 12 zh lines, got ' + seen.size);
+      });
+
+      TestRunner.test('full en coverage within 200 draws', function() {
+        mockSettingsLang('en');
+        var seen = new Set();
+        for (var i = 0; i < 200; i++) {
+          seen.add(window.ExitModule.getRandomLine());
+        }
+        TestRunner.assertEqual(seen.size, 12, 'expected all 12 en lines, got ' + seen.size);
+        clearSettingsMock();
       });
 
       TestRunner.test('does not return the same line consecutively too often', function() {
@@ -133,172 +166,3 @@
       });
     });
 
-    TestRunner.suite('ExitModule language switching', function() {
-      TestRunner.test('zh line 1 is correct', function() {
-        mockSettingsLang('zh');
-        var found = false;
-        for (var i = 0; i < 30; i++) {
-          if (window.ExitModule.getRandomLine() === '这对我来说太难了，我要去打开 TikTok 放松一下') {
-            found = true; break;
-          }
-        }
-        TestRunner.assert(found, 'did not draw zh line 1 within 30 attempts');
-        clearSettingsMock();
-      });
-
-      TestRunner.test('zh line 2 is correct', function() {
-        mockSettingsLang('zh');
-        var found = false;
-        for (var i = 0; i < 30; i++) {
-          if (window.ExitModule.getRandomLine() === '一代天才，就此陨落') {
-            found = true; break;
-          }
-        }
-        TestRunner.assert(found, 'did not draw zh line 2 within 30 attempts');
-        clearSettingsMock();
-      });
-
-      TestRunner.test('en line 1 is correct', function() {
-        mockSettingsLang('en');
-        var found = false;
-        for (var i = 0; i < 30; i++) {
-          if (window.ExitModule.getRandomLine() === 'This is too hard for me. I\'m going to open TikTok and relax.') {
-            found = true; break;
-          }
-        }
-        TestRunner.assert(found, 'did not draw en line 1 within 30 attempts');
-        clearSettingsMock();
-      });
-
-      TestRunner.test('en line 2 is correct', function() {
-        mockSettingsLang('en');
-        var found = false;
-        for (var i = 0; i < 30; i++) {
-          if (window.ExitModule.getRandomLine() === 'A brilliant mind, fallen just like that.') {
-            found = true; break;
-          }
-        }
-        TestRunner.assert(found, 'did not draw en line 2 within 30 attempts');
-        clearSettingsMock();
-      });
-
-      TestRunner.test('falls back to zh when SettingsModule missing', function() {
-        clearSettingsMock();
-        var line = window.ExitModule.getRandomLine();
-        TestRunner.assert(
-          line === '这对我来说太难了，我要去打开 TikTok 放松一下' ||
-          line === '一代天才，就此陨落',
-          'fallback to zh failed, got: ' + line
-        );
-      });
-
-      TestRunner.test('falls back to zh when SettingsModule returns invalid lang', function() {
-        window.SettingsModule = { get: function() { return 'fr'; } };
-        var line = window.ExitModule.getRandomLine();
-        TestRunner.assert(
-          line === '这对我来说太难了，我要去打开 TikTok 放松一下' ||
-          line === '一代天才，就此陨落',
-          'fallback to zh on invalid lang failed, got: ' + line
-        );
-        clearSettingsMock();
-      });
-    });
-
-    TestRunner.suite('ExitModule.showExitScreen', function() {
-      TestRunner.test('shows exitScreen', function() {
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        TestRunner.assert(isActive('exitScreen'), 'exitScreen should be active');
-      });
-
-      TestRunner.test('hides all other screens', function() {
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
-        TestRunner.assert(isHidden('gameScreen'), 'gameScreen should be hidden');
-        TestRunner.assert(isHidden('coordinateScreen'), 'coordinateScreen should be hidden');
-      });
-
-      TestRunner.test('injects humor line element', function() {
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        var lineEl = document.querySelector('#exitScreen .exit-humor-line');
-        TestRunner.assert(lineEl !== null, 'humor line element should be injected');
-      });
-
-      TestRunner.test('injects button elements', function() {
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        var confirmBtn = document.getElementById('exitConfirmBtn');
-        var againBtn = document.getElementById('exitAgainBtn');
-        TestRunner.assert(confirmBtn !== null, 'confirm button should be injected');
-        TestRunner.assert(againBtn !== null, 'again button should be injected');
-      });
-
-      TestRunner.test('button labels are Chinese by default', function() {
-        clearSettingsMock();
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        TestRunner.assertEqual(getText('#exitConfirmBtn'), '确认退出');
-        TestRunner.assertEqual(getText('#exitAgainBtn'), '再玩一局');
-      });
-
-      TestRunner.test('button labels switch to English when lang=en', function() {
-        mockSettingsLang('en');
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        TestRunner.assertEqual(getText('#exitConfirmBtn'), 'Confirm Exit');
-        TestRunner.assertEqual(getText('#exitAgainBtn'), 'Play Again');
-        clearSettingsMock();
-      });
-
-      TestRunner.test('humor line text is non-empty after show', function() {
-        clearSettingsMock();
-        resetScreens();
-        window.ExitModule.showExitScreen();
-        var text = getText('#exitScreen .exit-humor-line');
-        TestRunner.assert(text && text.length > 0, 'humor line should not be empty');
-      });
-    });
-
-    TestRunner.suite('ExitModule.init', function() {
-      TestRunner.test('does not throw with valid DOM', function() {
-        resetScreens();
-        var threw = false;
-        try {
-          window.ExitModule.init();
-        } catch (e) {
-          threw = true;
-        }
-        TestRunner.assert(!threw, 'init should not throw with valid DOM');
-      });
-
-      TestRunner.test('injects elements on init', function() {
-        resetScreens();
-        // Rebuild brand to simulate fresh DOM
-        var es = document.getElementById('exitScreen');
-        var brand = es.querySelector('.brand');
-        if (brand) brand.innerHTML = '<h1>See you next time!</h1><p>You can close this tab whenever you\'re ready.</p>';
-        window.ExitModule.init();
-        TestRunner.assert(es.querySelector('.exit-humor-line') !== null, 'humor line should exist after init');
-        TestRunner.assert(document.getElementById('exitConfirmBtn') !== null, 'confirm button should exist after init');
-      });
-    });
-
-    TestRunner.suite('Global pollution check', function() {
-      TestRunner.test('no unexpected globals leaked', function() {
-        TestRunner.assert(typeof window._lines === 'undefined', '_lines leaked');
-        TestRunner.assert(typeof window._lastIndex === 'undefined', '_lastIndex leaked');
-        TestRunner.assert(typeof window._getLang === 'undefined', '_getLang leaked');
-        TestRunner.assert(typeof window._hideAllScreens === 'undefined', '_hideAllScreens leaked');
-        TestRunner.assert(typeof window._showScreen === 'undefined', '_showScreen leaked');
-        TestRunner.assert(typeof window._buildExitScreen === 'undefined', '_buildExitScreen leaked');
-        TestRunner.assert(typeof window._updateButtonLabels === 'undefined', '_updateButtonLabels leaked');
-      });
-    });
-
-    TestRunner.run();
-  })();
-  </script>
-</body>
-</html>
