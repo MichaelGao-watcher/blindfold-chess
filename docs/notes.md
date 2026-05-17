@@ -27,7 +27,7 @@
 
 **浏览器安全机制**
 - 网页里的 JavaScript **不能直接读写电脑上的文件**（安全沙箱机制）
-- 所以 `learning/index.html` 的随手记只能存在浏览器的 `localStorage` 里，无法自动同步到 `notes.md`
+- 所以 `docs/index.html` 的随手记只能存在浏览器的 `localStorage` 里，无法自动同步到 `notes.md`
 - 解决方案：重要笔记让 AI 整理到 `notes.md`，网页随手记只记临时草稿
 
 ---
