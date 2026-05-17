@@ -26,6 +26,35 @@
             <span class="settings-label" data-i18n="langLabel">Language</span>
             <span class="settings-value" id="langValue">中文</span>
         </div>
+        <div class="settings-item" id="soundSetting">
+            <span class="settings-label" data-i18n="soundLabel">音效</span>
+            <span class="settings-value" id="soundValue">开</span>
+        </div>
+        <div class="settings-group">
+            <div class="settings-group-title" data-i18n="engineConfig">引擎</div>
+            <div class="settings-item slider-item" id="eloSetting">
+                <div class="slider-label-row">
+                    <span class="settings-label" data-i18n="eloLabel">等级分</span>
+                    <span class="slider-value" id="eloValue">1200</span>
+                </div>
+                <input type="range" id="eloSlider" min="400" max="3200" step="50" value="1200">
+            </div>
+            <div class="settings-item slider-item" id="depthSetting">
+                <div class="slider-label-row">
+                    <span class="settings-label" data-i18n="depthLabel">深度</span>
+                    <span class="slider-value" id="depthValue">15</span>
+                </div>
+                <input type="range" id="depthSlider" min="1" max="30" step="1" value="15">
+            </div>
+            <div class="settings-item" id="multiPvSetting">
+                <span class="settings-label" data-i18n="multiPvLabel">多线分析</span>
+                <span class="settings-value" id="multiPvValue">关</span>
+            </div>
+            <div class="settings-item" id="showHintsSetting">
+                <span class="settings-label" data-i18n="showHintsLabel">走法建议</span>
+                <span class="settings-value" id="showHintsValue">关</span>
+            </div>
+        </div>
     </div>
 
     <div class="screen active" id="startScreen">
@@ -262,6 +291,7 @@
     <script src="js/engine.js"></script>
     <script src="js/board-renderer.js"></script>
     <script src="js/storage.js"></script>
+    <script src="js/settings.js"></script>
     <script src="js/blindfold.js"></script>
     <script src="js/game.js"></script>
     <script src="js/coordinate.js"></script>

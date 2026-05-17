@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Test SettingsModule</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <style>
+    #test-results { margin: 2rem auto; max-width: 800px; padding: 1rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Settings toggle -->
+  <button class="settings-toggle" id="settingsToggle" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.67 15 1.65 1.65 0 0 0 3 14.39V14a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4"></path>
+    </svg>
+  </button>
+
+  <!-- Settings panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-item" id="themeSetting">
+      <span class="settings-label" data-i18n="themeLabel" id="themeLabelText">Theme</span>
+      <span class="settings-value" id="themeValue">
+        <svg id="panelIconSun" viewBox="0 0 24 24" style="display:none;width:18px;height:18px;stroke:var(--text-primary);fill:none;stroke-width:2;stroke-linecap:round;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg id="panelIconMoon" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:var(--text-primary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </span>
+    </div>
+    <div class="settings-item" id="langSetting">
+      <span class="settings-label" data-i18n="langLabel">Language</span>
+      <span class="settings-value" id="langValue">中文</span>
+    </div>
+    <div class="settings-item" id="soundSetting">
+      <span class="settings-label" data-i18n="soundLabel">音效</span>
+      <span class="settings-value" id="soundValue">开</span>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title" data-i18n="engineConfig">引擎</div>
+      <div class="settings-item slider-item" id="eloSetting">
+        <div class="slider-label-row">
+          <span class="settings-label" data-i18n="eloLabel">等级分</span>
+          <span class="slider-value" id="eloValue">1200</span>
+        </div>
+        <input type="range" id="eloSlider" min="400" max="3200" step="50" value="1200">
+      </div>
+      <div class="settings-item slider-item" id="depthSetting">
+        <div class="slider-label-row">
+          <span class="settings-label" data-i18n="depthLabel">深度</span>
+          <span class="slider-value" id="depthValue">15</span>
+        </div>
+        <input type="range" id="depthSlider" min="1" max="30" step="1" value="15">
+      </div>
+      <div class="settings-item" id="multiPvSetting">
+        <span class="settings-label" data-i18n="multiPvLabel">多线分析</span>
+        <span class="settings-value" id="multiPvValue">关</span>
+      </div>
+      <div class="settings-item" id="showHintsSetting">
+        <span class="settings-label" data-i18n="showHintsLabel">走法建议</span>
+        <span class="settings-value" id="showHintsValue">关</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dummy screen for visual context -->
+  <div class="screen active" id="startScreen">
+    <div class="brand">
+      <h1 data-i18n="tagline">Play chess without seeing the board.</h1>
+    </div>
+  </div>
+
+  <div id="test-results"></div>
+
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../js/storage.js"></script>
+  <script src="../../js/settings.js"></script>
+
+  <script>
+    TestRunner.suite('SettingsModule Browser API', function() {
+      TestRunner.test('SettingsModule exposed on window', function() {
+        TestRunner.assert(typeof window.SettingsModule === 'object', 'SettingsModule not exposed');
+      });
+      TestRunner.test('init is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.init === 'function');
+      });
+      TestRunner.test('setTheme is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.setTheme === 'function');
+      });
+      TestRunner.test('setLanguage is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.setLanguage === 'function');
+      });
+      TestRunner.test('setSound is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.setSound === 'function');
+      });
+      TestRunner.test('setEngineConfig is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.setEngineConfig === 'function');
+      });
+      TestRunner.test('get is a function', function() {
+        TestRunner.assert(typeof window.SettingsModule.get === 'function');
+      });
+    });
+
+    TestRunner.suite('SettingsModule Browser init', function() {
+      TestRunner.test('init applies default theme', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        TestRunner.assertEqual(document.documentElement.getAttribute('data-theme'), 'dark');
+      });
+      TestRunner.test('init applies default lang', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        TestRunner.assertEqual(document.documentElement.lang, 'zh-CN');
+      });
+      TestRunner.test('init closes panel', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        TestRunner.assert(!document.getElementById('settingsPanel').classList.contains('show'));
+      });
+    });
+
+    TestRunner.suite('SettingsModule Browser interactions', function() {
+      TestRunner.test('click themeSetting toggles theme', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        document.getElementById('themeSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('theme'), 'light');
+        document.getElementById('themeSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('theme'), 'dark');
+      });
+
+      TestRunner.test('click langSetting toggles language', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        document.getElementById('langSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('lang'), 'en');
+        document.getElementById('langSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('lang'), 'zh');
+      });
+
+      TestRunner.test('click soundSetting toggles sound', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        document.getElementById('soundSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('sound'), false);
+        document.getElementById('soundSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('sound'), true);
+      });
+
+      TestRunner.test('eloSlider input updates elo', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        var slider = document.getElementById('eloSlider');
+        slider.value = 2000;
+        slider.dispatchEvent(new Event('input'));
+        TestRunner.assertEqual(SettingsModule.get('engineConfig').elo, 2000);
+      });
+
+      TestRunner.test('depthSlider input updates depth', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        var slider = document.getElementById('depthSlider');
+        slider.value = 10;
+        slider.dispatchEvent(new Event('input'));
+        TestRunner.assertEqual(SettingsModule.get('engineConfig').depth, 10);
+      });
+
+      TestRunner.test('click multiPvSetting toggles multiPv', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        document.getElementById('multiPvSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('engineConfig').multiPv, true);
+        document.getElementById('multiPvSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('engineConfig').multiPv, false);
+      });
+
+      TestRunner.test('click showHintsSetting toggles showHints', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        document.getElementById('showHintsSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('showHints'), true);
+        document.getElementById('showHintsSetting').click();
+        TestRunner.assertEqual(SettingsModule.get('showHints'), false);
+      });
+    });
+
+    TestRunner.suite('SettingsModule Browser persistence', function() {
+      TestRunner.test('theme persists after reload', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        window.SettingsModule.setTheme('light');
+        window.SettingsModule.init();
+        TestRunner.assertEqual(SettingsModule.get('theme'), 'light');
+        TestRunner.assertEqual(document.documentElement.getAttribute('data-theme'), 'light');
+      });
+
+      TestRunner.test('lang persists after reload', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        window.SettingsModule.setLanguage('en');
+        window.SettingsModule.init();
+        TestRunner.assertEqual(SettingsModule.get('lang'), 'en');
+        TestRunner.assertEqual(document.documentElement.lang, 'en');
+      });
+
+      TestRunner.test('engineConfig persists after reload', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        window.SettingsModule.setEngineConfig({ elo: 2400, depth: 20, multiPv: true });
+        window.SettingsModule.init();
+        var cfg = SettingsModule.get('engineConfig');
+        TestRunner.assertEqual(cfg.elo, 2400);
+        TestRunner.assertEqual(cfg.depth, 20);
+        TestRunner.assertEqual(cfg.multiPv, true);
+      });
+    });
+
+    TestRunner.suite('SettingsModule Browser UI sync', function() {
+      TestRunner.test('theme change updates icon visibility', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        var sun = document.getElementById('panelIconSun');
+        var moon = document.getElementById('panelIconMoon');
+        TestRunner.assertEqual(sun.style.display, 'none');
+        TestRunner.assertEqual(moon.style.display, 'block');
+
+        window.SettingsModule.setTheme('light');
+        TestRunner.assertEqual(sun.style.display, 'block');
+        TestRunner.assertEqual(moon.style.display, 'none');
+      });
+
+      TestRunner.test('elo change updates eloValue text', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        window.SettingsModule.setEngineConfig({ elo: 2000 });
+        TestRunner.assertEqual(document.getElementById('eloValue').textContent, '2000');
+      });
+
+      TestRunner.test('depth change updates depthValue text', function() {
+        localStorage.clear();
+        window.SettingsModule.init();
+        window.SettingsModule.setEngineConfig({ depth: 8 });
+        TestRunner.assertEqual(document.getElementById('depthValue').textContent, '8');
+      });
+    });
+
+    TestRunner.suite('Global pollution check', function() {
+      TestRunner.test('no unexpected globals leaked', function() {
+        TestRunner.assert(typeof window._defaults === 'undefined', '_defaults leaked');
+        TestRunner.assert(typeof window._settings === 'undefined', '_settings leaked');
+        TestRunner.assert(typeof window._i18n === 'undefined', '_i18n leaked');
+        TestRunner.assert(typeof window._t === 'undefined', '_t leaked');
+        TestRunner.assert(typeof window._load === 'undefined', '_load leaked');
+        TestRunner.assert(typeof window._save === 'undefined', '_save leaked');
+        TestRunner.assert(typeof window._rebind === 'undefined', '_rebind leaked');
+        TestRunner.assert(typeof window._updateThemeIcon === 'undefined', '_updateThemeIcon leaked');
+      });
+    });
+
+    TestRunner.run();
+  </script>
+</body>
+</html>

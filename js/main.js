@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  // Initialize new modules (from batch 2)
+  // Initialize new modules (from batch 2 & 3)
   if (window.WelcomeModule && typeof WelcomeModule.init === 'function') {
     WelcomeModule.init();
   }
@@ -10,6 +10,9 @@
   }
   if (window.CoordinateModule && typeof CoordinateModule.init === 'function') {
     CoordinateModule.init();
+  }
+  if (window.SettingsModule && typeof SettingsModule.init === 'function') {
+    SettingsModule.init();
   }
 
   // Legacy: global text update (from common.js)
