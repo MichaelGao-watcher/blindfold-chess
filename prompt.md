@@ -399,3 +399,148 @@ blindfold-chess/
 
 *本 prompt 基于 docs/proposal.md、docs/high-Level Design.md 和 docs/tasks/*.md 生成。*
 *开发过程中如遇到设计文档未覆盖的边界情况，按「最小可行 + 保守安全」原则处理，并在报告中记录。*
+
+---
+
+## 附录：第4批 — 扩展功能并行派发提示词
+
+> 以下提示词用于 Orchestrator 模式。将本附录完整内容（或关键指令）提供给 AI，由 AI 同时创建三个 subAgent 并行实现 ExitModule、StatsModule、ReplayModule。
+
+### 执行指令（给 AI 的触发词）
+
+```
+你是项目总控（Orchestrator）。当前项目已完成第1-3批（底座层 + 核心功能 + SettingsModule）。
+现在执行第4批扩展功能。请同时创建三个 subAgent 并行执行：
+1. ExitModule（退出模块）
+2. StatsModule（统计模块）
+3. ReplayModule（盲棋复盘模块）
+
+三个模块逻辑独立，无相互依赖。每个 subAgent 只创建 .js 文件和 docs/tests/ 下的测试文件，禁止修改 index.html 和 css/style.css。你最后统一集成。
+
+具体规范见下文「模块详细规范」。
+```
+
+### 模块详细规范
+
+#### ExitModule
+
+**接口：**
+```javascript
+window.ExitModule = {
+  init(),               // 初始化退出界面
+  showExitScreen(),     // 显示退出屏幕
+  getRandomLine()       // 获取随机幽默台词
+};
+```
+
+**功能：**
+- 退出流程处理（导航到 exitScreen）
+- 随机展示幽默台词（中文2句 + 英文2句）
+- 支持中英切换（通过 SettingsModule.get('lang')）
+- 苹果风格视觉
+
+**交付：**
+- `js/exit.js`
+- `docs/tests/test-exit-node.js`
+- `docs/tests/test-exit.html`
+
+**测试要点：** 接口存在性、随机台词全覆盖、语言切换正确、屏幕切换正确、无全局泄漏。
+
+---
+
+#### StatsModule
+
+**接口：**
+```javascript
+window.StatsModule = {
+  init(),
+  getGameHistory(),
+  getWinRate(difficulty?),
+  getProgressData(),
+  exportData(format),   // 'json' | 'pgn'
+  clearData(),
+  recordGameResult(result)
+};
+```
+
+**功能：**
+- 对局历史（从 StorageModule.getGameRecords() 读取）
+- 胜率统计（总胜率 + 各难度胜率）
+- 进步曲线：①对局总时长趋势 ②平均生存步数趋势 ③各难度胜率变化。用纯 Canvas 手绘极简折线图
+- 坐标练习成绩（从 StorageModule.getCoordinateRecords() 读取）
+- 数据导出（JSON / PGN）
+- 成就徽章（门槛极低）：「第一步」「初尝败绩」「十步之遥」「首胜」「连败不屈」
+
+**数据结构：** 严格遵循 prompt.md §六 的 GameRecord / CoordinateRecord 契约。
+
+**交付：**
+- `js/stats.js`
+- `docs/tests/test-stats-node.js`
+- `docs/tests/test-stats.html`
+
+**测试要点：** 接口存在性、胜率计算准确性（0局/全赢/全输/混合）、进步曲线数据正确、徽章判定逻辑、导出格式、无全局泄漏。
+
+---
+
+#### ReplayModule
+
+**接口：**
+```javascript
+window.ReplayModule = {
+  init(),
+  loadPgn(pgnText),
+  verifyMove(input),
+  loadClassicGame(id),
+  navigateToMove(index),
+  toggleBoard(),
+  getCurrentFen()
+};
+```
+
+**功能：**
+- PGN 粘贴解析（标准格式，手写解析器，不引入外部库）
+- 逐条输入验证（用 chess.js 验证合法性）
+- 内置名局：创建 `data/games.js`，先放 **5 个经典名局 PGN** 作为占位数据
+- 走法导航：点击列表跳转、键盘 ← → 导航
+- 棋盘显示：用 BoardRenderer.create() 渲染当前局面
+- 语言支持：通过 SettingsModule.get('lang')
+
+**交付：**
+- `js/replay.js`
+- `data/games.js`（5个占位名局）
+- `docs/tests/test-replay-node.js`
+- `docs/tests/test-replay.html`
+
+**测试要点：** 接口存在性、PGN 解析正确、逐条验证严格、导航同步更新局面、加载内置名局、无全局泄漏。
+
+---
+
+### 全局约束（三个模块都必须遵守）
+
+1. **纯 JS，零框架，零 npm**
+   - 禁止引入 React/Vue/jQuery/Chart.js 等任何第三方库
+   - 图表必须用 HTML5 Canvas 手写，或用纯 DOM/CSS 模拟
+2. **模块封装**
+   - 所有全局函数/变量必须封装进 `window.{ModuleName}` 对象
+   - 模块内部状态用局部变量，禁止泄漏到 window
+3. **DOM 操作**
+   - 使用 `document.getElementById` / `querySelector`
+   - 每个模块只操作自己的容器/屏幕
+4. **持久化**
+   - 使用 `StorageModule.set(key, value)` / `StorageModule.get(key)`
+   - StorageModule 不可用时 fallback 到 `localStorage`
+5. **测试**
+   - 必须创建 `docs/tests/test-{module}-node.js`（Node.js 测试，提供 DOM mock）
+   - 必须创建 `docs/tests/test-{module}.html`（浏览器测试）
+   - 测试不通过不算完成
+6. **禁止修改的文件**
+   - 三个 subAgent **各自禁止修改** `index.html` 和 `css/style.css`
+   - 禁止删除 `common.js` 中的原有代码
+
+### 集成步骤（三个 subAgent 全部完成后，由 Orchestrator 执行）
+
+1. 更新 `index.html`：
+   - 在 `body` 内添加三个模块各自的 `screen` 区块
+   - 在 `</body>` 前按顺序添加 `<script src="js/exit.js"></script>`、`<script src="js/stats.js"></script>`、`<script src="js/replay.js"></script>`
+2. 更新 `js/main.js`：调用 `ExitModule.init()`、`StatsModule.init()`、`ReplayModule.init()`
+3. 微调 `css/style.css` 补充模块专属样式（保持苹果风格一致）

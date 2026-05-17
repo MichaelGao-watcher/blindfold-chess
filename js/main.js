@@ -15,6 +15,17 @@
     SettingsModule.init();
   }
 
+  // Batch 4 modules
+  if (window.ExitModule && typeof ExitModule.init === 'function') {
+    ExitModule.init();
+  }
+  if (window.StatsModule && typeof StatsModule.init === 'function') {
+    StatsModule.init();
+  }
+  if (window.ReplayModule && typeof ReplayModule.init === 'function') {
+    ReplayModule.init();
+  }
+
   // Legacy: global text update (from common.js)
   if (typeof updateTexts === 'function') {
     updateTexts();
