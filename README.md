@@ -31,3 +31,4 @@ blindfold-chess/
 ## 开发状态
 
 最新开发进度请查看 `STATE.md`（面向 AI 的动态状态备份）。
+# test
