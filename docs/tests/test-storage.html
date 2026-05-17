@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Test StorageModule</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; background: #f5f5f7; }
+    #test-results { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    h2 { margin-top: 0; color: #1d1d1f; }
+  </style>
+</head>
+<body>
+  <div id="test-results"></div>
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../js/storage.js"></script>
+  <script>
+    TestRunner.suite('StorageModule', function() {
+
+      // -------- SM-31: localStorage --------
+      TestRunner.test('SM-31: set/get string', function() {
+        StorageModule.set('test_str', 'hello');
+        TestRunner.assertEqual(StorageModule.get('test_str'), 'hello');
+      });
+
+      TestRunner.test('SM-31: set/get object', function() {
+        StorageModule.set('test_obj', { a: 1, b: [2, 3] });
+        TestRunner.assertEqual(StorageModule.get('test_obj'), { a: 1, b: [2, 3] });
+      });
+
+      TestRunner.test('SM-31: set/get number', function() {
+        StorageModule.set('test_num', 42);
+        TestRunner.assertEqual(StorageModule.get('test_num'), 42);
+      });
+
+      TestRunner.test('SM-31: get non-existent key returns null', function() {
+        TestRunner.assertEqual(StorageModule.get('nonexistent_key_xyz'), null);
+      });
+
+      TestRunner.test('SM-31: remove deletes key', function() {
+        StorageModule.set('to_remove', 'val');
+        StorageModule.remove('to_remove');
+        TestRunner.assertEqual(StorageModule.get('to_remove'), null);
+      });
+
+      TestRunner.test('SM-31: invalid JSON in storage returns null', function() {
+        localStorage.setItem('blindfold_chess_bad_json', 'not json');
+        TestRunner.assertEqual(StorageModule.get('bad_json'), null);
+      });
+
+      // -------- SM-32: IndexedDB --------
+      TestRunner.test('SM-32: init opens database', async function() {
+        await StorageModule.init();
+        TestRunner.assert(true);
+      });
+
+      TestRunner.test('SM-32: addGameRecord and getGameRecords', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addGameRecord({
+          difficulty: 'easy',
+          result: '1-0',
+          pgn: '1.e4 e5 2.Nf3',
+          moves: 2,
+          duration: 60
+        });
+        const records = await StorageModule.getGameRecords();
+        TestRunner.assertEqual(records.length, 1);
+        TestRunner.assertEqual(records[0].difficulty, 'easy');
+      });
+
+      TestRunner.test('SM-32: getGameRecordById', async function() {
+        await StorageModule.clearAll();
+        const rec = { difficulty: 'hard', result: '0-1', pgn: '1.d4', moves: 1, duration: 30 };
+        await StorageModule.addGameRecord(rec);
+        const found = await StorageModule.getGameRecordById(rec.id);
+        TestRunner.assertEqual(found.difficulty, 'hard');
+      });
+
+      TestRunner.test('SM-32: deleteGameRecord', async function() {
+        await StorageModule.clearAll();
+        const rec = { difficulty: 'medium', result: '1/2-1/2', pgn: '1.e4', moves: 1, duration: 10 };
+        await StorageModule.addGameRecord(rec);
+        await StorageModule.deleteGameRecord(rec.id);
+        const found = await StorageModule.getGameRecordById(rec.id);
+        TestRunner.assertEqual(found, undefined);
+      });
+
+      TestRunner.test('SM-32: getGameRecords filter by difficulty', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addGameRecord({ difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 });
+        await StorageModule.addGameRecord({ difficulty: 'hard', result: '0-1', pgn: '1.d4', moves: 1, duration: 10 });
+        const easy = await StorageModule.getGameRecords({ difficulty: 'easy' });
+        TestRunner.assertEqual(easy.length, 1);
+        TestRunner.assertEqual(easy[0].difficulty, 'easy');
+      });
+
+      TestRunner.test('SM-32: getGameRecords filter by result', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addGameRecord({ difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 });
+        await StorageModule.addGameRecord({ difficulty: 'easy', result: '0-1', pgn: '1.d4', moves: 1, duration: 10 });
+        const wins = await StorageModule.getGameRecords({ result: '1-0' });
+        TestRunner.assertEqual(wins.length, 1);
+      });
+
+      TestRunner.test('SM-32: getGameRecords filter by date range', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addGameRecord({ id: 'r1', date: '2026-01-01T00:00:00.000Z', difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 });
+        await StorageModule.addGameRecord({ id: 'r2', date: '2026-06-01T00:00:00.000Z', difficulty: 'easy', result: '1-0', pgn: '1.d4', moves: 1, duration: 10 });
+        const filtered = await StorageModule.getGameRecords({ startDate: '2026-05-01T00:00:00.000Z', endDate: '2026-12-31T00:00:00.000Z' });
+        TestRunner.assertEqual(filtered.length, 1);
+        TestRunner.assertEqual(filtered[0].id, 'r2');
+      });
+
+      TestRunner.test('SM-32: addStat and getStats', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addStat({ type: 'game', score: 100, accuracy: 0.8 });
+        await StorageModule.addStat({ type: 'coordinate', score: 50, accuracy: 0.9 });
+        const all = await StorageModule.getStats();
+        TestRunner.assertEqual(all.length, 2);
+      });
+
+      TestRunner.test('SM-32: getStats filter by type', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addStat({ type: 'game', score: 100, accuracy: 0.8 });
+        await StorageModule.addStat({ type: 'coordinate', score: 50, accuracy: 0.9 });
+        const gameStats = await StorageModule.getStats('game');
+        TestRunner.assertEqual(gameStats.length, 1);
+        TestRunner.assertEqual(gameStats[0].type, 'game');
+      });
+
+      TestRunner.test('SM-32: getStatsByDateRange', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addStat({ id: 's1', date: '2026-01-01T00:00:00.000Z', type: 'game', score: 10, accuracy: 0.5 });
+        await StorageModule.addStat({ id: 's2', date: '2026-06-01T00:00:00.000Z', type: 'game', score: 20, accuracy: 0.6 });
+        const filtered = await StorageModule.getStatsByDateRange('2026-05-01T00:00:00.000Z', '2026-12-31T00:00:00.000Z');
+        TestRunner.assertEqual(filtered.length, 1);
+        TestRunner.assertEqual(filtered[0].id, 's2');
+      });
+
+      TestRunner.test('SM-32: addCoordinateRecord and getCoordinateRecords', async function() {
+        await StorageModule.clearAll();
+        await StorageModule.addCoordinateRecord({ mode: 'a', side: 'white', score: 10, total: 20, accuracy: 0.5, duration: 30 });
+        const recs = await StorageModule.getCoordinateRecords();
+        TestRunner.assertEqual(recs.length, 1);
+        TestRunner.assertEqual(recs[0].mode, 'a');
+      });
+
+      TestRunner.test('SM-32: addGameRecord auto-generates id and date', async function() {
+        await StorageModule.clearAll();
+        const rec = { difficulty: 'expert', result: '*', pgn: '', moves: 0, duration: 0 };
+        await StorageModule.addGameRecord(rec);
+        TestRunner.assert(typeof rec.id === 'string' && rec.id.length > 0, 'id should be generated');
+        TestRunner.assert(typeof rec.date === 'string' && rec.date.length > 0, 'date should be generated');
+        TestRunner.assertEqual(rec.mode, 'blindfold');
+      });
+
+      TestRunner.test('SM-32: invalid record throws', async function() {
+        let err = null;
+        try { await StorageModule.addGameRecord(null); } catch (e) { err = e; }
+        TestRunner.assert(err !== null, 'should throw on null record');
+      });
+
+      // -------- SM-33: Export --------
+      TestRunner.test('SM-33: exportAll returns valid JSON with all sections', async function() {
+        await StorageModule.clearAll();
+        StorageModule.set('theme', 'dark');
+        await StorageModule.addGameRecord({ difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 });
+        await StorageModule.addStat({ type: 'game', score: 100, accuracy: 0.8 });
+        await StorageModule.addCoordinateRecord({ mode: 'a', side: 'white', score: 5, total: 10, accuracy: 0.5, duration: 20 });
+
+        const json = await StorageModule.exportAll();
+        const data = JSON.parse(json);
+        TestRunner.assertEqual(data.version, 1);
+        TestRunner.assert(typeof data.exportedAt === 'string', 'exportedAt should be string');
+        TestRunner.assert(typeof data.settings === 'object' && data.settings !== null, 'settings should be object');
+        TestRunner.assert(Array.isArray(data.gameRecords), 'gameRecords should be array');
+        TestRunner.assert(Array.isArray(data.stats), 'stats should be array');
+        TestRunner.assert(Array.isArray(data.coordinateRecords), 'coordinateRecords should be array');
+        TestRunner.assertEqual(data.gameRecords.length, 1);
+        TestRunner.assertEqual(data.stats.length, 1);
+        TestRunner.assertEqual(data.coordinateRecords.length, 1);
+      });
+
+      // -------- SM-34: Import --------
+      TestRunner.test('SM-34: importAll restores data correctly', async function() {
+        await StorageModule.clearAll();
+        const payload = {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          settings: { 'blindfold_chess_lang': '"zh"' },
+          gameRecords: [{ id: 'g1', date: '2026-01-01T00:00:00.000Z', mode: 'blindfold', difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 }],
+          stats: [{ id: 's1', date: '2026-01-01T00:00:00.000Z', type: 'game', score: 100, accuracy: 0.8 }],
+          coordinateRecords: [{ id: 'c1', date: '2026-01-01T00:00:00.000Z', mode: 'a', side: 'white', score: 5, total: 10, accuracy: 0.5, duration: 20 }]
+        };
+        await StorageModule.importAll(JSON.stringify(payload));
+
+        TestRunner.assertEqual(StorageModule.get('lang'), 'zh');
+        const games = await StorageModule.getGameRecords();
+        TestRunner.assertEqual(games.length, 1);
+        TestRunner.assertEqual(games[0].id, 'g1');
+        const stats = await StorageModule.getStats();
+        TestRunner.assertEqual(stats.length, 1);
+        TestRunner.assertEqual(stats[0].id, 's1');
+        const coords = await StorageModule.getCoordinateRecords();
+        TestRunner.assertEqual(coords.length, 1);
+        TestRunner.assertEqual(coords[0].id, 'c1');
+      });
+
+      TestRunner.test('SM-34: importAll rejects invalid JSON', async function() {
+        let err = null;
+        try { await StorageModule.importAll('not json'); } catch (e) { err = e; }
+        TestRunner.assert(err !== null, 'should throw on invalid JSON');
+      });
+
+      TestRunner.test('SM-34: importAll rejects missing gameRecords', async function() {
+        let err = null;
+        try { await StorageModule.importAll(JSON.stringify({ version: 1, exportedAt: '', settings: {}, stats: [], coordinateRecords: [] })); } catch (e) { err = e; }
+        TestRunner.assert(err !== null, 'should throw on missing gameRecords');
+      });
+
+      TestRunner.test('SM-34: importAll rejects missing stats', async function() {
+        let err = null;
+        try { await StorageModule.importAll(JSON.stringify({ version: 1, exportedAt: '', settings: {}, gameRecords: [], coordinateRecords: [] })); } catch (e) { err = e; }
+        TestRunner.assert(err !== null, 'should throw on missing stats');
+      });
+
+      TestRunner.test('SM-34: importAll rejects missing coordinateRecords', async function() {
+        let err = null;
+        try { await StorageModule.importAll(JSON.stringify({ version: 1, exportedAt: '', settings: {}, gameRecords: [], stats: [] })); } catch (e) { err = e; }
+        TestRunner.assert(err !== null, 'should throw on missing coordinateRecords');
+      });
+
+      // -------- SM-35: Performance --------
+      TestRunner.test('SM-35: bulk insert 100 records and query', async function() {
+        await StorageModule.clearAll();
+        const t0 = Date.now();
+        for (let i = 0; i < 100; i++) {
+          await StorageModule.addGameRecord({
+            difficulty: 'easy',
+            result: '1-0',
+            pgn: '1.e4 e5',
+            moves: 10,
+            duration: 120
+          });
+        }
+        const records = await StorageModule.getGameRecords();
+        const elapsed = Date.now() - t0;
+        TestRunner.assertEqual(records.length, 100);
+        TestRunner.assert(elapsed < 5000, 'Bulk insert took ' + elapsed + 'ms, expected < 5000ms');
+      });
+
+      // -------- clearAll --------
+      TestRunner.test('clearAll empties localStorage and IndexedDB', async function() {
+        StorageModule.set('temp_key', 'temp_val');
+        await StorageModule.addGameRecord({ difficulty: 'easy', result: '1-0', pgn: '1.e4', moves: 1, duration: 10 });
+        await StorageModule.clearAll();
+        TestRunner.assertEqual(StorageModule.get('temp_key'), null);
+        const records = await StorageModule.getGameRecords();
+        TestRunner.assertEqual(records.length, 0);
+        const stats = await StorageModule.getStats();
+        TestRunner.assertEqual(stats.length, 0);
+        const coords = await StorageModule.getCoordinateRecords();
+        TestRunner.assertEqual(coords.length, 0);
+      });
+
+      // -------- downloadPgn --------
+      TestRunner.test('downloadPgn function exists', function() {
+        TestRunner.assert(typeof StorageModule.downloadPgn === 'function', 'downloadPgn should be a function');
+      });
+
+    });
+
+    TestRunner.run();
+  </script>
+</body>
+</html>

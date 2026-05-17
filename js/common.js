@@ -248,6 +248,16 @@
                 showCoordinate();
             }
         }
+        function showCoordinate() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('hidden');
+            const coord = document.getElementById('coordinateScreen');
+            coord.classList.remove('hidden');
+            requestAnimationFrame(() => coord.classList.add('active'));
+            if (window.CoordinateModule && typeof CoordinateModule.reset === 'function') {
+                CoordinateModule.reset();
+            }
+        }
         function showGuide() {
             document.getElementById('startScreen').classList.remove('active');
             document.getElementById('startScreen').classList.add('hidden');

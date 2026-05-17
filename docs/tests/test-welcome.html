@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Test WelcomeModule</title>
+  <style>
+    body { font-family: monospace; margin: 20px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .hidden { display: none !important; }
+    .mode-card { padding: 10px; margin: 5px; border: 1px solid #ccc; cursor: pointer; }
+    .animated-bg { background: linear-gradient(45deg, #1a1a2e, #16213e); }
+    .low-end { background: #0f0f0f; }
+  </style>
+</head>
+<body>
+  <div id="test-results"></div>
+
+  <!-- Minimal DOM matching production structure -->
+  <div class="screen active" id="startScreen">
+    <div class="brand">
+      <h1>Blindfold Chess</h1>
+      <p data-i18n="tagline">Play chess without seeing the board.</p>
+    </div>
+    <div class="modes">
+      <div class="mode-card" id="modeBlindfold">
+        <div class="mode-title">Blindfold Practice</div>
+      </div>
+      <div class="mode-card" id="modeCoordinate">
+        <div class="mode-title">Coordinate Practice</div>
+      </div>
+      <div class="mode-card" id="modeReplay">
+        <div class="mode-title">Blindfold Replay</div>
+      </div>
+      <div class="mode-card" id="modeGuide">
+        <div class="mode-title">Wait. I don't even know how…</div>
+      </div>
+    </div>
+    <div class="footer">Tap a mode to begin</div>
+  </div>
+
+  <div class="screen hidden" id="difficultyScreen">
+    <button class="back-btn"><span>Back</span></button>
+    <div class="brand"><h1>Blindfold Practice</h1></div>
+    <div class="difficulty-list"></div>
+  </div>
+
+  <div class="screen hidden" id="coordinateScreen">
+    <button class="back-btn"><span>Back</span></button>
+    <div class="brand"><h1>Coordinate Practice</h1></div>
+  </div>
+
+  <div class="screen hidden" id="guideScreen">
+    <button class="back-btn"><span>Back</span></button>
+    <div class="brand"><h1>Getting Started</h1></div>
+  </div>
+
+  <div class="screen hidden" id="basicsScreen"></div>
+  <div class="screen hidden" id="gameScreen"></div>
+  <div class="screen hidden" id="exitScreen"></div>
+
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../js/welcome.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    // Synchronise requestAnimationFrame for deterministic tests
+    var origRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = function(fn) { fn(); return 0; };
+
+    function resetScreens() {
+      document.querySelectorAll('.screen').forEach(function(s) {
+        s.classList.remove('active');
+        s.classList.add('hidden');
+      });
+      document.getElementById('startScreen').classList.remove('hidden');
+      document.getElementById('startScreen').classList.add('active');
+    }
+
+    function clickElement(id) {
+      const el = document.getElementById(id);
+      if (!el) throw new Error('Element not found: ' + id);
+      const ev = new Event('click', { bubbles: true });
+      el.dispatchEvent(ev);
+    }
+
+    function isActive(id) {
+      const el = document.getElementById(id);
+      return el && el.classList.contains('active') && !el.classList.contains('hidden');
+    }
+
+    function isHidden(id) {
+      const el = document.getElementById(id);
+      return !el || el.classList.contains('hidden');
+    }
+
+    TestRunner.suite('WelcomeModule API', function() {
+      TestRunner.test('WelcomeModule exposed on window', function() {
+        TestRunner.assert(typeof window.WelcomeModule === 'object', 'WelcomeModule not exposed');
+      });
+      TestRunner.test('init is a function', function() {
+        TestRunner.assert(typeof window.WelcomeModule.init === 'function', 'init not a function');
+      });
+      TestRunner.test('navigateTo is a function', function() {
+        TestRunner.assert(typeof window.WelcomeModule.navigateTo === 'function', 'navigateTo not a function');
+      });
+    });
+
+    TestRunner.suite('WelcomeModule.navigateTo modes', function() {
+      TestRunner.test('navigateTo(blindfold) shows difficultyScreen', function() {
+        resetScreens();
+        window.WelcomeModule.navigateTo('blindfold');
+        TestRunner.assert(isActive('difficultyScreen'), 'difficultyScreen should be active');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('navigateTo(coordinate) shows coordinateScreen', function() {
+        resetScreens();
+        window.WelcomeModule.navigateTo('coordinate');
+        TestRunner.assert(isActive('coordinateScreen'), 'coordinateScreen should be active');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('navigateTo(guide) shows guideScreen', function() {
+        resetScreens();
+        window.WelcomeModule.navigateTo('guide');
+        TestRunner.assert(isActive('guideScreen'), 'guideScreen should be active');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('navigateTo(replay) hides startScreen', function() {
+        resetScreens();
+        window.WelcomeModule.navigateTo('replay');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('navigateTo(unknown) does not throw', function() {
+        resetScreens();
+        var threw = false;
+        try {
+          window.WelcomeModule.navigateTo('unknown');
+        } catch (e) {
+          threw = true;
+        }
+        TestRunner.assert(!threw, 'navigateTo(unknown) should not throw');
+      });
+    });
+
+    TestRunner.suite('WelcomeModule button clicks', function() {
+      TestRunner.test('click modeBlindfold navigates to difficultyScreen', function() {
+        resetScreens();
+        window.WelcomeModule.init();
+        clickElement('modeBlindfold');
+        TestRunner.assert(isActive('difficultyScreen'), 'difficultyScreen should be active after click');
+      });
+
+      TestRunner.test('click modeCoordinate navigates to coordinateScreen', function() {
+        resetScreens();
+        window.WelcomeModule.init();
+        clickElement('modeCoordinate');
+        TestRunner.assert(isActive('coordinateScreen'), 'coordinateScreen should be active after click');
+      });
+
+      TestRunner.test('click modeGuide navigates to guideScreen', function() {
+        resetScreens();
+        window.WelcomeModule.init();
+        clickElement('modeGuide');
+        TestRunner.assert(isActive('guideScreen'), 'guideScreen should be active after click');
+      });
+
+      TestRunner.test('click modeReplay hides startScreen', function() {
+        resetScreens();
+        window.WelcomeModule.init();
+        clickElement('modeReplay');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden after click');
+      });
+    });
+
+    TestRunner.suite('WelcomeModule visual effects', function() {
+      TestRunner.test('init does not throw when screens exist', function() {
+        resetScreens();
+        var threw = false;
+        try {
+          window.WelcomeModule.init();
+        } catch (e) {
+          threw = true;
+        }
+        TestRunner.assert(!threw, 'init should not throw with valid DOM');
+      });
+
+      TestRunner.test('entrance animation sets card styles without breaking clicks', function() {
+        resetScreens();
+        window.WelcomeModule.init();
+        var card = document.getElementById('modeBlindfold');
+        TestRunner.assert(card.style.opacity === '0' || card.style.opacity === '1' || card.style.opacity === '',
+          'card opacity should be a valid value');
+      });
+    });
+
+    TestRunner.suite('WelcomeModule low-end fallback', function() {
+      TestRunner.test('low-end device skips animated-bg class', function() {
+        resetScreens();
+        // Mock low-end device
+        var origConcurrency = navigator.hardwareConcurrency;
+        var origMemory = navigator.deviceMemory;
+        navigator.hardwareConcurrency = 1;
+        navigator.deviceMemory = 1;
+
+        window.WelcomeModule.init();
+        var startScreen = document.getElementById('startScreen');
+        var hasAnimated = startScreen.classList.contains('animated-bg');
+        var hasLowEnd = startScreen.classList.contains('low-end');
+
+        // Restore
+        navigator.hardwareConcurrency = origConcurrency;
+        navigator.deviceMemory = origMemory;
+
+        TestRunner.assert(!hasAnimated, 'low-end device should not have animated-bg');
+        TestRunner.assert(hasLowEnd, 'low-end device should have low-end class');
+      });
+
+      TestRunner.test('normal device gets animated-bg class', function() {
+        resetScreens();
+        // Mock normal device
+        var origConcurrency = navigator.hardwareConcurrency;
+        var origMemory = navigator.deviceMemory;
+        navigator.hardwareConcurrency = 4;
+        navigator.deviceMemory = 8;
+
+        window.WelcomeModule.init();
+        var startScreen = document.getElementById('startScreen');
+        var hasAnimated = startScreen.classList.contains('animated-bg');
+
+        // Restore
+        navigator.hardwareConcurrency = origConcurrency;
+        navigator.deviceMemory = origMemory;
+
+        TestRunner.assert(hasAnimated, 'normal device should have animated-bg');
+      });
+    });
+
+    TestRunner.suite('WelcomeModule state & session', function() {
+      TestRunner.test('navigateTo stores lastMode in sessionStorage', function() {
+        if (typeof sessionStorage === 'undefined') {
+          return; // skip in environments without sessionStorage
+        }
+        sessionStorage.removeItem('lastMode');
+        resetScreens();
+        window.WelcomeModule.navigateTo('blindfold');
+        TestRunner.assertEqual(sessionStorage.getItem('lastMode'), 'blindfold');
+      });
+    });
+
+    TestRunner.suite('Global pollution check', function() {
+      TestRunner.test('no unexpected globals leaked', function() {
+        // _i18n, _t, _showScreen etc. are inside IIFE and must not leak
+        TestRunner.assert(typeof window._i18n === 'undefined', '_i18n leaked');
+        TestRunner.assert(typeof window._t === 'undefined', '_t leaked');
+        TestRunner.assert(typeof window._showScreen === 'undefined', '_showScreen leaked');
+        TestRunner.assert(typeof window._bindCard === 'undefined', '_bindCard leaked');
+      });
+    });
+
+    TestRunner.run();
+  })();
+  </script>
+</body>
+</html>

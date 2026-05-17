@@ -9,45 +9,57 @@
 
 - **日期**：2026-05-17
 - **状态**：
-  1. 用户确认学习策略：在盲棋项目内建立 `docs/` 学习区，与产品代码隔离
-  2. 新建 `docs/index.html` + `docs/notes.md` + `docs/exercises/`
-  3. **大手术完成**：`index.html` 拆分为主结构 + `css/style.css` + `js/common.js` + `js/engine.js` + `js/game.js` + `js/coordinate.js` + `js/main.js`
-  4. 拆分后全部功能测试通过（盲棋对战、坐标练习、设置面板、入门指南）
-  5. `docs/` 区域完全独立，可随意创建文档/练习而不影响主项目
-  6. 走子音效已实现（Web Audio API，用户走棋 + 引擎走棋时播放）
-  7. PGN 显示已实现（对局结束后结果卡片显示完整 PGN 走法记录 + 复制按钮）
-  8. 执黑反转已实现（坐标练习选执黑时，棋盘和坐标标注从黑方视角显示）
-  9. **`learning/` 改名为 `docs/`**，同步更新所有引用路径
-  10. **概要设计文档完成**：`docs/high-Level Design.md` 划分 12 个功能域模块，全部需求已确认
-  11. **需求细节全部确认**：内置名局100个(Lichess)、苹果风格、幽默台词2句、进步曲线3指标全上、低门槛徽章5个、候选走法开关(默认关)、自定义Elo滑动条(400~3200)
+  1. 第1批（底座层）全部完成：TestRunner、StorageModule、BoardRenderer、EngineModule
+  2. 第2批（核心功能）全部完成：WelcomeModule、GuideModule、BlindfoldModule、CoordinateModule
+  3. 所有模块均附带完整 Node.js 测试，总计 **80/80 测试通过**
+  4. 修复了新旧代码交接导致的网页交互断裂（main.js 初始化调用、EngineManager 兼容层等）
+  5. index.html 已可正常预览使用（欢迎页/盲棋对战/坐标练习/指南）
+  6. `docs/notes.md` 新增"分批次开发环境选择策略"和"CLI 并行提示词模板"
+  7. 用户确认第4批（StatsModule/ReplayModule/ExitModule）尝试用 CLI 并行跑
 - **部署**：https://michaelgao-watcher.github.io/blindfold-chess/
 
 ---
 
 ## 开发进度
 
+### 第1批（底座层）✅ 已完成
+- [x] TestRunner（7/7 passed）
+- [x] StorageModule（28/28 passed）
+- [x] BoardRenderer（28/28 passed）
+- [x] EngineModule（19/19 passed）
+
+### 第2批（核心功能）✅ 已完成
+- [x] WelcomeModule（18/18 passed）
+- [x] GuideModule（20/20 passed）
+- [x] BlindfoldModule（26/26 passed）
+- [x] CoordinateModule（16/16 passed）
+
+### 第3批（系统整合）⏳ 待执行
+- [ ] SettingsModule（从 common.js 提取主题/语言/音效/引擎配置）
+
+### 第4批（扩展功能）📋 规划中
+- [ ] StatsModule
+- [ ] ReplayModule
+- [ ] ExitModule
+
+### 历史功能（已存在）
 - [x] GitHub 仓库 + Pages 自动部署
 - [x] MPChess SVG 棋子 + Grey 棋盘 + 坐标标注
 - [x] 设置面板（主题/语言切换）+ 全站 i18n
 - [x] Stockfish 18 引擎集成
 - [x] 难度选择 + 走法输入 + 终局判定
-- [x] 坐标练习（A/B 模式 + 计时挑战 + 全屏棋盘 + 震动反馈）
-- [x] ~~棋子记忆练习（P2）~~ **已移除**，用户决定暂不做
-- [ ] 盲棋复盘（P3，`proposal.md` 已定义，待开发）
-- [x] 坐标练习执黑视角（已实现，待用户长期测试稳定性）
-- [ ] 品牌感欢迎页（苹果风格，待实现）
-- [ ] Bug #5：步数不同步（已加日志，待用户控制台反馈）
-- [ ] 根据概要设计文档开始编码实现（12个模块）
+- [x] 坐标练习（A/B 模式 + 计时挑战 + 执黑视角 + 震动反馈）
+- [x] 走子音效（Web Audio API）
+- [x] PGN 显示与复制
 
 ---
 
 ## 待办列表
 
-1. 根据 `docs/high-Level Design.md` 按模块逐步编码实现
-2. 用户提供 Bug #5 的控制台日志后，精确定位修复
-3. 盲棋复盘功能开发（P3）
-4. 品牌感欢迎页实现（苹果风格）
-5. 低门槛徽章系统 + 进步曲线 + 统计数据导出
+1. 第3批：SettingsModule（IDE 串行）
+2. 第4批：StatsModule + ReplayModule + ExitModule（CLI 并行尝试）
+3. 全局入口 main.js 完善：按模块初始化顺序统一调用各 init()
+4. 旧代码清理：common.js / game.js 中的旧全局函数逐步移除
 
 ---
 
@@ -55,7 +67,8 @@
 
 - GitHub Pages 国内需代理；Stockfish 从 unpkg 加载，国内可能超时
 - 本地测试必须用 HTTP 服务器（`file://` 禁止 Web Worker）
-- 本次会话所有修改已本地保存，待 push
+- 旧代码（common.js / game.js）与新模块并存，逐步迁移中
+- 引擎候选走法（goMultiPv）尚未集成到 BlindfoldModule UI
 
 ---
 
@@ -63,16 +76,13 @@
 
 | 日期 | 决策 |
 |------|------|
-| 2026-05-17 | 新建 `docs/` 学习区：与产品代码隔离，支持主题同步、随手记（localStorage）、练习目录 |
-| 2026-05-17 | 学习策略确认：零散知识点 → `notes.md` + 网页随手记；实战练习 → `exercises/xxx.html` |
-| 2026-05-16 | 新增 `BUGFIX.md` 集中记录 bug 和修复方案 |
-| 2026-05-16 | 新增 `proposal.md` 明确产品需求、功能边界和优先级 |
-| 2026-05-16 | `AGENTS.md` 增加硬性规则：用户无编程背景，AI 必须通过提问确认需求 |
-| 2026-05-17 | `AGENTS.md` 新增实验区工作流规则：`docs/` 是实验区，根目录是生产区，实验功能经用户确认后才迁移 |
-| 2026-05-17 | `learning/` 改名为 `docs/`，同步更新所有引用路径 |
-| 2026-05-17 | 概要设计文档 `docs/high-Level Design.md` 完成：12个功能域模块、全部需求确认 |
-| 2026-05-17 | 需求细节确认：100个名局(Lichess)、苹果风格、低门槛徽章、候选走法开关、自定义Elo滑动条 |
+| 2026-05-17 | 第2批全部完成：WelcomeModule、GuideModule、BlindfoldModule、CoordinateModule（80/80 测试通过） |
+| 2026-05-17 | 修复网页交互断裂：main.js 调用各模块 init()、EngineManager 兼容层、selectMode 桥接 |
+| 2026-05-17 | notes.md 新增"分批次开发环境选择策略"和"CLI 并行提示词模板" |
+| 2026-05-17 | 第1批全部完成：TestRunner、StorageModule、BoardRenderer、EngineModule |
+| 2026-05-17 | 概要设计文档 `docs/high-Level Design.md` 完成：12个功能域模块 |
 | 2026-05-17 | 大手术拆分：`index.html` → `css/style.css` + `js/common.js` + `js/engine.js` + `js/game.js` + `js/coordinate.js` + `js/main.js` |
-| 2026-05-17 | 走子音效（Web Audio API）+ PGN 显示与复制 + 坐标练习执黑视角反转 |
-| 2026-05-16 | 坐标练习支持 A/B 两种玩法 + 计时挑战 + 全屏棋盘 + 错误震动反馈 |
-| 2026-05-16 | `proposal.md` 确认 8 项决策（见文档第 8 节） |
+
+---
+
+*上次更新：2026-05-17 第2批完成存档*

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test BlindfoldModule</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      padding: 2rem;
+    }
+    #test-results { margin-top: 1rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .hidden { display: none !important; }
+    .board-panel { max-width: 360px; margin: 1rem auto; }
+    .game-input, .game-actions { display: flex; gap: 0.5rem; justify-content: center; margin: 0.5rem 0; }
+    .move-history { max-height: 120px; overflow-y: auto; border: 1px solid #333; padding: 0.5rem; margin: 0.5rem 0; }
+    .result-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
+    .result-overlay.show { display: flex; }
+    .result-card { background: #1a1a2e; padding: 2rem; border-radius: 16px; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <h1>BlindfoldModule 测试</h1>
+  <div id="test-results"></div>
+
+  <!-- Minimal DOM matching production gameScreen -->
+  <div class="screen hidden" id="startScreen"></div>
+  <div class="screen hidden" id="difficultyScreen"></div>
+
+  <div class="screen hidden" id="gameScreen">
+    <div class="game-header">
+      <button class="back-btn">Back</button>
+      <span class="difficulty-badge" id="diffBadge">Medium</span>
+      <span class="engine-status" id="engineStatus">Ready</span>
+      <button class="board-toggle" id="boardToggleBtn">Toggle</button>
+    </div>
+
+    <div class="board-panel hidden" id="boardPanel">
+      <div id="boardGrid"></div>
+    </div>
+
+    <div class="move-history" id="moveHistory">
+      <div style="color:var(--text-secondary);text-align:center;font-size:0.9rem;padding:1rem 0;">New game started. White to move.</div>
+    </div>
+
+    <div class="game-input">
+      <input type="text" id="moveInput" placeholder="e.g. e4, Nf3, O-O" />
+      <button id="moveSubmitBtn">Go</button>
+    </div>
+
+    <div class="game-actions">
+      <button id="newGameBtn" data-i18n="newGame">New Game</button>
+      <button id="resignBtn" data-i18n="resign">Resign</button>
+    </div>
+  </div>
+
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+      <div class="result-title" id="resultTitle">Game Over</div>
+      <div class="result-msg" id="resultMsg">White wins by checkmate!</div>
+      <div class="result-pgn-wrap">
+        <pre id="resultPgn"></pre>
+        <button class="copy-btn" id="copyPgnBtn">📋 Copy PGN</button>
+      </div>
+      <button id="playAgainBtn" data-i18n="playAgain">Play Again</button>
+    </div>
+  </div>
+
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../chess.js"></script>
+  <script src="../../js/board-renderer.js"></script>
+  <script src="../../js/storage.js"></script>
+
+  <!-- Mock EngineModule for deterministic browser tests -->
+  <script>
+  (function() {
+    'use strict';
+    window.EngineModule = {
+      _ready: true,
+      init: function() { this._ready = true; return Promise.resolve(); },
+      setDifficulty: function(config) {},
+      setPosition: function(fen) {},
+      go: function(callback) {
+        this._ready = false;
+        setTimeout(function() {
+          window.EngineModule._ready = true;
+          if (callback) callback('e7e5');
+        }, 10);
+      },
+      stop: function() {},
+      terminate: function() { this._ready = false; },
+      isReady: function() { return this._ready; }
+    };
+  })();
+  </script>
+
+  <script src="../../js/blindfold.js"></script>
+
+  <script>
+  (function() {
+    'use strict';
+
+    function isHidden(id) {
+      var el = document.getElementById(id);
+      return !el || el.classList.contains('hidden');
+    }
+    function isActive(id) {
+      var el = document.getElementById(id);
+      return el && el.classList.contains('active') && !el.classList.contains('hidden');
+    }
+    function getText(id) {
+      var el = document.getElementById(id);
+      return el ? el.textContent : '';
+    }
+
+    TestRunner.suite('BlindfoldModule API', function() {
+      TestRunner.test('BlindfoldModule exposed on window', function() {
+        TestRunner.assert(typeof window.BlindfoldModule === 'object', 'BlindfoldModule not exposed');
+      });
+      TestRunner.test('all required methods exist', function() {
+        var m = window.BlindfoldModule;
+        TestRunner.assert(typeof m.init === 'function', 'init missing');
+        TestRunner.assert(typeof m.submitMove === 'function', 'submitMove missing');
+        TestRunner.assert(typeof m.toggleBoard === 'function', 'toggleBoard missing');
+        TestRunner.assert(typeof m.resign === 'function', 'resign missing');
+        TestRunner.assert(typeof m.newGame === 'function', 'newGame missing');
+        TestRunner.assert(typeof m.getPgn === 'function', 'getPgn missing');
+        TestRunner.assert(typeof m.getCurrentFen === 'function', 'getCurrentFen missing');
+        TestRunner.assert(typeof m.onGameOver === 'function', 'onGameOver missing');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule.init', function() {
+      TestRunner.test('init(easy) shows gameScreen and sets badge', function() {
+        window.BlindfoldModule.init('easy');
+        TestRunner.assert(isActive('gameScreen'), 'gameScreen should be active');
+        TestRunner.assert(isHidden('difficultyScreen'), 'difficultyScreen should be hidden');
+        TestRunner.assertEqual(getText('diffBadge'), 'easy');
+      });
+
+      TestRunner.test('init(medium) sets badge correctly', function() {
+        window.BlindfoldModule.init('medium');
+        TestRunner.assertEqual(getText('diffBadge'), 'medium');
+      });
+
+      TestRunner.test('init(hard) sets badge correctly', function() {
+        window.BlindfoldModule.init('hard');
+        TestRunner.assertEqual(getText('diffBadge'), 'hard');
+      });
+
+      TestRunner.test('init(expert) sets badge correctly', function() {
+        window.BlindfoldModule.init('expert');
+        TestRunner.assertEqual(getText('diffBadge'), 'expert');
+      });
+
+      TestRunner.test('init hides board by default', function() {
+        window.BlindfoldModule.init('medium');
+        TestRunner.assert(isHidden('boardPanel'), 'boardPanel should be hidden initially');
+      });
+
+      TestRunner.test('init clears move input', function() {
+        window.BlindfoldModule.init('medium');
+        var input = document.getElementById('moveInput');
+        TestRunner.assertEqual(input.value, '');
+        TestRunner.assertEqual(input.disabled, false);
+      });
+
+      TestRunner.test('init resets move history', function() {
+        window.BlindfoldModule.init('medium');
+        var hist = document.getElementById('moveHistory');
+        TestRunner.assert(hist.textContent.indexOf('New game started') !== -1 || hist.innerHTML.indexOf('New game started') !== -1);
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule.submitMove', function() {
+      TestRunner.test('legal move is accepted and engine is triggered', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.submitMove('e4');
+        TestRunner.assertEqual(window.BlindfoldModule.getCurrentFen(), 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1');
+      });
+
+      TestRunner.test('illegal move is rejected with shake effect', function() {
+        window.BlindfoldModule.init('medium');
+        var input = document.getElementById('moveInput');
+        input.value = 'xyz';
+        input.style.borderColor = '';
+        window.BlindfoldModule.submitMove('xyz');
+        TestRunner.assertEqual(window.BlindfoldModule.getCurrentFen(), 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+        TestRunner.assert(input.style.borderColor === '#ff453a', 'input should have red border after illegal move');
+      });
+
+      TestRunner.test('empty move is ignored', function() {
+        window.BlindfoldModule.init('medium');
+        var before = window.BlindfoldModule.getCurrentFen();
+        window.BlindfoldModule.submitMove('');
+        TestRunner.assertEqual(window.BlindfoldModule.getCurrentFen(), before);
+      });
+
+      TestRunner.test('engine replies and updates board', async function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.submitMove('e4');
+        await new Promise(function(r) { setTimeout(r, 50); });
+        var fen = window.BlindfoldModule.getCurrentFen();
+        TestRunner.assert(fen.indexOf('w KQkq') !== -1, 'after e4 e5 it should be white to move');
+        var hist = document.getElementById('moveHistory');
+        TestRunner.assert(hist.textContent.indexOf('e4') !== -1 || hist.innerHTML.indexOf('e4') !== -1, 'history should contain e4');
+        TestRunner.assert(hist.textContent.indexOf('e5') !== -1 || hist.innerHTML.indexOf('e5') !== -1, 'history should contain e5');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule.toggleBoard', function() {
+      TestRunner.test('toggleBoard shows hidden board', function() {
+        window.BlindfoldModule.init('medium');
+        TestRunner.assert(isHidden('boardPanel'));
+        window.BlindfoldModule.toggleBoard();
+        TestRunner.assert(!isHidden('boardPanel'), 'boardPanel should be visible after toggle');
+      });
+
+      TestRunner.test('toggleBoard hides visible board', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.toggleBoard();
+        TestRunner.assert(!isHidden('boardPanel'));
+        window.BlindfoldModule.toggleBoard();
+        TestRunner.assert(isHidden('boardPanel'), 'boardPanel should be hidden after second toggle');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule.resign', function() {
+      TestRunner.test('resign shows result overlay with 0-1', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.resign();
+        var overlay = document.getElementById('resultOverlay');
+        TestRunner.assert(overlay.classList.contains('show'), 'resultOverlay should show');
+        TestRunner.assertEqual(getText('resultTitle'), 'Resigned');
+        TestRunner.assertEqual(getText('resultMsg'), 'You resigned. Stockfish wins.');
+        var pgn = document.getElementById('resultPgn').textContent;
+        TestRunner.assert(pgn.indexOf('[Result "0-1"]') !== -1, 'PGN should contain 0-1');
+      });
+
+      TestRunner.test('resign disables input', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.resign();
+        TestRunner.assertEqual(document.getElementById('moveInput').disabled, true);
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule.newGame', function() {
+      TestRunner.test('newGame hides overlay and restarts', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.resign();
+        TestRunner.assert(document.getElementById('resultOverlay').classList.contains('show'));
+        window.BlindfoldModule.newGame();
+        TestRunner.assert(!document.getElementById('resultOverlay').classList.contains('show'), 'overlay should be hidden');
+        TestRunner.assert(isActive('gameScreen'), 'gameScreen should still be active');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule game over detection', function() {
+      TestRunner.test('checkmate triggers onGameOver callback', function() {
+        window.BlindfoldModule.init('medium');
+        var called = false;
+        var resultArg = null;
+        window.BlindfoldModule.onGameOver(function(res) { called = true; resultArg = res; });
+        window.BlindfoldModule.resign();
+        TestRunner.assert(called, 'onGameOver callback should be called on resign');
+        TestRunner.assertEqual(resultArg.result, '0-1');
+        TestRunner.assert(typeof resultArg.pgn === 'string');
+        TestRunner.assert(typeof resultArg.moves === 'number');
+        TestRunner.assert(typeof resultArg.duration === 'number');
+        TestRunner.assertEqual(resultArg.difficulty, 'medium');
+      });
+
+      TestRunner.test('stalemate detection', function() {
+        var staleFen = '8/8/8/8/8/1qk5/8/K7 w - - 0 1';
+        var game = new Chess(staleFen);
+        TestRunner.assert(game.in_stalemate(), 'Chess should detect stalemate');
+      });
+
+      TestRunner.test('draw detection (50-move rule)', function() {
+        var drawFen = '8/8/8/8/8/8/8/4K2k w - - 100 1';
+        var game = new Chess(drawFen);
+        TestRunner.assert(game.in_draw(), 'Chess should detect draw by 50-move rule');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule PGN format', function() {
+      TestRunner.test('PGN contains standard headers', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.submitMove('e4');
+        var pgn = window.BlindfoldModule.getPgn();
+        TestRunner.assert(pgn.indexOf('[Event "Blindfold Chess"]') !== -1, 'missing Event header');
+        TestRunner.assert(pgn.indexOf('[Site "https://michaelgao-watcher.github.io/blindfold-chess/"]') !== -1, 'missing Site header');
+        TestRunner.assert(pgn.indexOf('[Date "') !== -1, 'missing Date header');
+        TestRunner.assert(pgn.indexOf('[White "Player"]') !== -1, 'missing White header');
+        TestRunner.assert(pgn.indexOf('[Black "Stockfish"]') !== -1, 'missing Black header');
+        TestRunner.assert(pgn.indexOf('[Result "') !== -1, 'missing Result header');
+      });
+
+      TestRunner.test('PGN includes move text', function() {
+        window.BlindfoldModule.init('medium');
+        window.BlindfoldModule.submitMove('e4');
+        var pgn = window.BlindfoldModule.getPgn();
+        TestRunner.assert(pgn.indexOf('e4') !== -1, 'PGN should contain e4');
+      });
+
+      TestRunner.test('PGN result is * for ongoing game', function() {
+        window.BlindfoldModule.init('medium');
+        var pgn = window.BlindfoldModule.getPgn();
+        TestRunner.assert(pgn.indexOf('[Result "*"]') !== -1, 'ongoing game should have * result');
+      });
+    });
+
+    TestRunner.suite('BlindfoldModule no global leaks', function() {
+      TestRunner.test('no unexpected globals leaked', function() {
+        TestRunner.assert(typeof window._game === 'undefined', '_game leaked');
+        TestRunner.assert(typeof window._boardRenderer === 'undefined', '_boardRenderer leaked');
+        TestRunner.assert(typeof window._currentLevel === 'undefined', '_currentLevel leaked');
+        TestRunner.assert(typeof window._audioCtx === 'undefined', '_audioCtx leaked');
+        TestRunner.assert(typeof window._gameOverCallbacks === 'undefined', '_gameOverCallbacks leaked');
+      });
+    });
+
+    TestRunner.run();
+  })();
+  </script>
+</body>
+</html>

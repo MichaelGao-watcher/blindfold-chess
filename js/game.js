@@ -36,6 +36,10 @@
             gs.classList.remove('hidden');
             requestAnimationFrame(() => gs.classList.add('active'));
             initGame();
+            // Bridge to new BlindfoldModule (batch 2)
+            if (window.BlindfoldModule && typeof BlindfoldModule.init === 'function') {
+                BlindfoldModule.init(level);
+            }
         }
 
         function showStartFromGame() {

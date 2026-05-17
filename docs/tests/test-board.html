@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test BoardRenderer</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      padding: 2rem;
+    }
+    #test-results {
+      margin-top: 1rem;
+    }
+    .test-container {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: #1c1c1e;
+    }
+
+    /* Board styles */
+    .board-wrapper { display: flex; align-items: flex-start; gap: 4px; }
+    .board-area { display: flex; flex-direction: column; gap: 4px; }
+    .board-row-labels { display: flex; flex-direction: column; }
+    .board-row-labels span, .board-col-labels span {
+      font-size: 0.65rem; font-weight: 600; color: #8e8e93;
+      display: flex; align-items: center; justify-content: center; user-select: none;
+    }
+    .board-row-labels span { height: 40px; }
+    .board-col-labels { display: flex; }
+    .board-col-labels span { width: 40px; height: 20px; }
+
+    .board-grid {
+      display: grid; grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px);
+      width: 324px;
+      border-radius: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.1);
+    }
+    .square { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; font-size: 1.6rem; line-height: 1; user-select: none; }
+    .square.light { background: #eeeed2; }
+    .square.dark { background: #769656; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-10px); }
+      30% { transform: translateX(10px); }
+      45% { transform: translateX(-7px); }
+      60% { transform: translateX(7px); }
+      75% { transform: translateX(-4px); }
+      90% { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.5s ease; }
+
+    .piece-svg { width: 90%; height: 90%; display: block; }
+  </style>
+</head>
+<body>
+  <h1>BoardRenderer 测试</h1>
+  <div id="test-results"></div>
+
+  <!-- Test containers -->
+  <div id="board-test-container" class="test-container"></div>
+
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../js/board-renderer.js"></script>
+  <script>
+    (function() {
+      function makeContainer(id) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+        return el;
+      }
+
+      TestRunner.suite('BoardRenderer', () => {
+        // BR-01: create returns instance with required methods
+        TestRunner.test('BR-01: create returns instance with all methods', () => {
+          const container = makeContainer('br01');
+          const board = BoardRenderer.create('br01');
+          TestRunner.assert(typeof board.render === 'function', 'render missing');
+          TestRunner.assert(typeof board.highlight === 'function', 'highlight missing');
+          TestRunner.assert(typeof board.clearHighlight === 'function', 'clearHighlight missing');
+          TestRunner.assert(typeof board.shake === 'function', 'shake missing');
+          TestRunner.assert(typeof board.onSquareClick === 'function', 'onSquareClick missing');
+          TestRunner.assert(typeof board.destroy === 'function', 'destroy missing');
+          board.destroy();
+        });
+
+        // BR-02: 64 squares
+        TestRunner.test('BR-02: 8x8 grid with 64 squares', () => {
+          const container = makeContainer('br02');
+          const board = BoardRenderer.create('br02');
+          const grid = document.getElementById('br02').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          TestRunner.assertEqual(squares.length, 64, 'Expected 64 squares');
+          board.destroy();
+        });
+
+        // BR-03: colors alternate correctly
+        TestRunner.test('BR-03: square colors alternate correctly (#eeeed2 / #769656)', () => {
+          const container = makeContainer('br03');
+          const board = BoardRenderer.create('br03');
+          const grid = document.getElementById('br03').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              const idx = i * 8 + j;
+              const sq = squares[idx];
+              const isLight = (i + j) % 2 === 0;
+              TestRunner.assert(sq.classList.contains(isLight ? 'light' : 'dark'), 'Color class wrong at ' + i + ',' + j);
+              TestRunner.assert(!!sq.style.background, 'Background should be set');
+            }
+          }
+          board.destroy();
+        });
+
+        // BR-04: size adaptive
+        TestRunner.test('BR-04: squareSize option applied', () => {
+          const container = makeContainer('br04');
+          const board = BoardRenderer.create('br04', { squareSize: 60 });
+          const grid = document.getElementById('br04').querySelector('.board-grid');
+          TestRunner.assert(grid.style.gridTemplateColumns.indexOf('60px') !== -1, 'gridTemplateColumns should contain 60px');
+          const squares = grid.querySelectorAll('.square');
+          TestRunner.assertEqual(squares[0].style.width, '60px', 'Square width should be 60px');
+          TestRunner.assertEqual(squares[0].style.height, '60px', 'Square height should be 60px');
+          board.destroy();
+        });
+
+        // BR-05: piece SVGs render
+        TestRunner.test('BR-05: all 12 piece SVGs render correctly', () => {
+          const container = makeContainer('br05');
+          const board = BoardRenderer.create('br05', { showPieces: true });
+          board.render('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+          const grid = document.getElementById('br05').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          TestRunner.assert(squares[0].innerHTML.includes('svg'), 'a8 should have SVG');
+          TestRunner.assert(squares[0].innerHTML.includes('piece-svg'), 'a8 should have piece-svg class');
+          TestRunner.assert(squares[63].innerHTML.includes('svg'), 'h1 should have SVG');
+          const a2 = grid.querySelector('[data-square="a2"]');
+          TestRunner.assert(a2.innerHTML.includes('svg'), 'a2 should have white pawn SVG');
+          const a7 = grid.querySelector('[data-square="a7"]');
+          TestRunner.assert(a7.innerHTML.includes('svg'), 'a7 should have black pawn SVG');
+          board.destroy();
+        });
+
+        // BR-06: FEN parsing
+        TestRunner.test('BR-06: FEN string renders correct position', () => {
+          const container = makeContainer('br06');
+          const board = BoardRenderer.create('br06', { showPieces: true });
+          board.render('8/8/8/3Q4/8/8/8/8');
+          const grid = document.getElementById('br06').querySelector('.board-grid');
+          const d5 = grid.querySelector('[data-square="d5"]');
+          TestRunner.assert(d5.innerHTML.includes('svg'), 'd5 should have white queen SVG');
+          const e4 = grid.querySelector('[data-square="e4"]');
+          TestRunner.assert(!e4.innerHTML.includes('svg'), 'e4 should be empty');
+          board.destroy();
+        });
+
+        // BR-07: empty board
+        TestRunner.test('BR-07: empty FEN or no argument renders empty board', () => {
+          const container = makeContainer('br07a');
+          const board = BoardRenderer.create('br07a', { showPieces: true });
+          board.render();
+          const grid = document.getElementById('br07a').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          let pieceCount = 0;
+          squares.forEach(sq => { if (sq.innerHTML.includes('svg')) pieceCount++; });
+          TestRunner.assertEqual(pieceCount, 0, 'Empty render should have 0 pieces');
+          board.destroy();
+
+          const container2 = makeContainer('br07b');
+          const board2 = BoardRenderer.create('br07b', { showPieces: true });
+          board2.render('');
+          const grid2 = document.getElementById('br07b').querySelector('.board-grid');
+          const squares2 = grid2.querySelectorAll('.square');
+          pieceCount = 0;
+          squares2.forEach(sq => { if (sq.innerHTML.includes('svg')) pieceCount++; });
+          TestRunner.assertEqual(pieceCount, 0, 'Empty string render should have 0 pieces');
+          board2.destroy();
+        });
+
+        // BR-08: pieces centered
+        TestRunner.test('BR-08: pieces centered via flex styles', () => {
+          const container = makeContainer('br08');
+          const board = BoardRenderer.create('br08', { showPieces: true });
+          board.render('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+          const grid = document.getElementById('br08').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e1"]');
+          TestRunner.assertEqual(sq.style.display, 'flex', 'Should use flexbox');
+          TestRunner.assertEqual(sq.style.alignItems, 'center', 'Should align center');
+          TestRunner.assertEqual(sq.style.justifyContent, 'center', 'Should justify center');
+          board.destroy();
+        });
+
+        // BR-09: file labels a-h
+        TestRunner.test('BR-09: file labels a-h at bottom', () => {
+          const container = makeContainer('br09');
+          const board = BoardRenderer.create('br09', { perspective: 'white' });
+          const wrapper = document.getElementById('br09').querySelector('.board-wrapper');
+          const colLabels = wrapper.querySelector('.board-col-labels');
+          TestRunner.assert(colLabels !== null, 'Col labels should exist');
+          const spans = colLabels.children;
+          TestRunner.assertEqual(spans.length, 8, 'Should have 8 file labels');
+          TestRunner.assertEqual(spans[0].textContent, 'a', 'First file should be a');
+          TestRunner.assertEqual(spans[7].textContent, 'h', 'Last file should be h');
+          board.destroy();
+        });
+
+        // BR-10: rank labels 1-8
+        TestRunner.test('BR-10: rank labels 1-8 on left', () => {
+          const container = makeContainer('br10');
+          const board = BoardRenderer.create('br10', { perspective: 'white' });
+          const wrapper = document.getElementById('br10').querySelector('.board-wrapper');
+          const rowLabels = wrapper.querySelector('.board-row-labels');
+          TestRunner.assert(rowLabels !== null, 'Row labels should exist');
+          const spans = rowLabels.children;
+          TestRunner.assertEqual(spans.length, 8, 'Should have 8 rank labels');
+          TestRunner.assertEqual(spans[0].textContent, '8', 'Top rank should be 8');
+          TestRunner.assertEqual(spans[7].textContent, '1', 'Bottom rank should be 1');
+          board.destroy();
+        });
+
+        // BR-11/12: label styling
+        TestRunner.test('BR-11/12: coordinate labels styled appropriately', () => {
+          const container = makeContainer('br11');
+          const board = BoardRenderer.create('br11');
+          const wrapper = document.getElementById('br11').querySelector('.board-wrapper');
+          const rowLabels = wrapper.querySelector('.board-row-labels');
+          const colLabels = wrapper.querySelector('.board-col-labels');
+          TestRunner.assertEqual(rowLabels.style.display, 'flex', 'Row labels should be flex');
+          TestRunner.assertEqual(rowLabels.style.flexDirection, 'column', 'Row labels should be column');
+          TestRunner.assertEqual(colLabels.style.display, 'flex', 'Col labels should be flex');
+          const span = rowLabels.children[0];
+          TestRunner.assertEqual(span.style.fontSize, '0.65rem', 'Font size should be 0.65rem');
+          TestRunner.assertEqual(span.style.fontWeight, '600', 'Font weight should be 600');
+          board.destroy();
+        });
+
+        // BR-13: white perspective a1 bottom-left
+        TestRunner.test('BR-13: white perspective a1 at bottom-left', () => {
+          const container = makeContainer('br13');
+          const board = BoardRenderer.create('br13', { perspective: 'white' });
+          const grid = document.getElementById('br13').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          const a1 = squares[7 * 8 + 0];
+          TestRunner.assertEqual(a1.getAttribute('data-square'), 'a1', 'Bottom-left should be a1');
+          const h8 = squares[0 * 8 + 7];
+          TestRunner.assertEqual(h8.getAttribute('data-square'), 'h8', 'Top-right should be h8');
+          board.destroy();
+        });
+
+        // BR-14: black perspective a1 top-right
+        TestRunner.test('BR-14: black perspective a1 at top-right', () => {
+          const container = makeContainer('br14');
+          const board = BoardRenderer.create('br14', { perspective: 'black' });
+          const grid = document.getElementById('br14').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          const a1 = squares[0 * 8 + 7];
+          TestRunner.assertEqual(a1.getAttribute('data-square'), 'a1', 'Top-right should be a1');
+          const h8 = squares[7 * 8 + 0];
+          TestRunner.assertEqual(h8.getAttribute('data-square'), 'h8', 'Bottom-left should be h8');
+          board.destroy();
+        });
+
+        // BR-15: labels reverse with perspective
+        TestRunner.test('BR-15: coordinate labels reverse with perspective', () => {
+          const containerW = makeContainer('br15w');
+          const boardW = BoardRenderer.create('br15w', { perspective: 'white' });
+          const wrapperW = document.getElementById('br15w').querySelector('.board-wrapper');
+          const rowW = wrapperW.querySelector('.board-row-labels');
+          const colW = wrapperW.querySelector('.board-col-labels');
+          TestRunner.assertEqual(rowW.children[0].textContent, '8', 'White top rank should be 8');
+          TestRunner.assertEqual(colW.children[0].textContent, 'a', 'White left file should be a');
+          boardW.destroy();
+
+          const containerB = makeContainer('br15b');
+          const boardB = BoardRenderer.create('br15b', { perspective: 'black' });
+          const wrapperB = document.getElementById('br15b').querySelector('.board-wrapper');
+          const rowB = wrapperB.querySelector('.board-row-labels');
+          const colB = wrapperB.querySelector('.board-col-labels');
+          TestRunner.assertEqual(rowB.children[0].textContent, '1', 'Black top rank should be 1');
+          TestRunner.assertEqual(colB.children[0].textContent, 'h', 'Black left file should be h');
+          boardB.destroy();
+        });
+
+        // BR-16: options.perspective controls perspective
+        TestRunner.test('BR-16: options.perspective controls perspective', () => {
+          const container = makeContainer('br16');
+          const board = BoardRenderer.create('br16', { perspective: 'black' });
+          const grid = document.getElementById('br16').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="h1"]');
+          TestRunner.assert(sq !== null, 'h1 should exist in black perspective');
+          board.destroy();
+        });
+
+        // BR-17: highlight works
+        TestRunner.test('BR-17: highlight applies to specified square', () => {
+          const container = makeContainer('br17');
+          const board = BoardRenderer.create('br17');
+          board.highlight('e4', 'correct');
+          const grid = document.getElementById('br17').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e4"]');
+          TestRunner.assert(sq.classList.contains('highlight-correct'), 'Should have highlight-correct class');
+          board.destroy();
+        });
+
+        // BR-18: correct = green
+        TestRunner.test('BR-18: correct highlight is green', () => {
+          const container = makeContainer('br18');
+          const board = BoardRenderer.create('br18');
+          board.highlight('e4', 'correct');
+          const grid = document.getElementById('br18').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e4"]');
+          TestRunner.assert(sq.classList.contains('highlight-correct'), 'Should have highlight-correct class');
+          TestRunner.assert(!!sq.style.background, 'Correct highlight should set background');
+          board.destroy();
+        });
+
+        // BR-19: wrong = red
+        TestRunner.test('BR-19: wrong highlight is red', () => {
+          const container = makeContainer('br19');
+          const board = BoardRenderer.create('br19');
+          board.highlight('e4', 'wrong');
+          const grid = document.getElementById('br19').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e4"]');
+          TestRunner.assert(sq.classList.contains('highlight-wrong'), 'Should have highlight-wrong class');
+          TestRunner.assert(!!sq.style.background, 'Wrong highlight should set background');
+          board.destroy();
+        });
+
+        // BR-20: selected = blue border
+        TestRunner.test('BR-20: selected highlight has blue border', () => {
+          const container = makeContainer('br20');
+          const board = BoardRenderer.create('br20');
+          board.highlight('e4', 'selected');
+          const grid = document.getElementById('br20').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e4"]');
+          TestRunner.assertEqual(sq.style.border, '3px solid #0a84ff', 'Selected should have blue border');
+          TestRunner.assert(sq.classList.contains('highlight-selected'), 'Should have highlight-selected class');
+          board.destroy();
+        });
+
+        // BR-21: clearHighlight removes all
+        TestRunner.test('BR-21: clearHighlight removes all highlights', () => {
+          const container = makeContainer('br21');
+          const board = BoardRenderer.create('br21');
+          board.highlight('e4', 'correct');
+          board.highlight('d5', 'wrong');
+          board.highlight('f3', 'selected');
+          board.clearHighlight();
+          const grid = document.getElementById('br21').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          squares.forEach(sq => {
+            TestRunner.assert(!sq.classList.contains('highlight-correct'), 'No correct highlight');
+            TestRunner.assert(!sq.classList.contains('highlight-wrong'), 'No wrong highlight');
+            TestRunner.assert(!sq.classList.contains('highlight-selected'), 'No selected highlight');
+          });
+          board.destroy();
+        });
+
+        // BR-22/23/24/25/26: shake animation
+        TestRunner.test('BR-22/25/26: shake adds shake class to grid (transform-based)', () => {
+          const container = makeContainer('br22');
+          const board = BoardRenderer.create('br22');
+          const grid = document.getElementById('br22').querySelector('.board-grid');
+          TestRunner.assert(!grid.classList.contains('shake'), 'Should not start with shake');
+          board.shake();
+          TestRunner.assert(grid.classList.contains('shake'), 'Should have shake class after call');
+          board.destroy();
+        });
+
+        // BR-27/28/29: click event delegation
+        TestRunner.test('BR-27/28/29: click event delegation returns square coordinate', () => {
+          const container = makeContainer('br29');
+          const board = BoardRenderer.create('br29');
+          const clicked = [];
+          board.onSquareClick(sq => clicked.push(sq));
+          const grid = document.getElementById('br29').querySelector('.board-grid');
+          const target = grid.querySelector('[data-square="e4"]');
+          const event = new MouseEvent('click', { target: target });
+          grid.dispatchEvent(event);
+          TestRunner.assertEqual(clicked.length, 1, 'Callback should be called once');
+          TestRunner.assertEqual(clicked[0], 'e4', 'Callback should receive e4');
+          board.destroy();
+        });
+
+        // BR-30/31: destroy cleans up
+        TestRunner.test('BR-30/31: destroy removes content and events', () => {
+          const container = makeContainer('br30');
+          const board = BoardRenderer.create('br30');
+          board.destroy();
+          const el = document.getElementById('br30');
+          TestRunner.assertEqual(el.children.length, 0, 'Container should be empty after destroy');
+        });
+
+        // BR-32: 64 color alternation
+        TestRunner.test('BR-32: 64 squares alternate colors in checkerboard', () => {
+          const container = makeContainer('br32');
+          const board = BoardRenderer.create('br32');
+          const grid = document.getElementById('br32').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          TestRunner.assertEqual(squares.length, 64, 'Must be 64');
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              const idx = i * 8 + j;
+              const expected = (i + j) % 2 === 0 ? 'light' : 'dark';
+              TestRunner.assert(squares[idx].classList.contains(expected), 'Checkerboard pattern at ' + i + ',' + j);
+            }
+          }
+          board.destroy();
+        });
+
+        // BR-33: all 12 SVG piece types present in module
+        TestRunner.test('BR-33: all 12 piece SVGs present', () => {
+          // We verify by rendering the initial position and counting piece SVGs
+          const container = makeContainer('br33');
+          const board = BoardRenderer.create('br33', { showPieces: true });
+          board.render('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+          const grid = document.getElementById('br33').querySelector('.board-grid');
+          const squares = grid.querySelectorAll('.square');
+          let svgCount = 0;
+          squares.forEach(sq => { if (sq.innerHTML.includes('svg')) svgCount++; });
+          TestRunner.assertEqual(svgCount, 32, 'Initial position should have 32 pieces');
+          board.destroy();
+        });
+
+        // BR-34: perspective reversal with pieces
+        TestRunner.test('BR-34: black perspective reverses piece layout', () => {
+          const containerW = makeContainer('br34w');
+          const boardW = BoardRenderer.create('br34w', { perspective: 'white', showPieces: true });
+          boardW.render('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+          const gridW = document.getElementById('br34w').querySelector('.board-grid');
+          const a1w = gridW.querySelector('[data-square="a1"]');
+          TestRunner.assert(a1w.innerHTML.includes('svg'), 'White a1 should have piece');
+          boardW.destroy();
+
+          const containerB = makeContainer('br34b');
+          const boardB = BoardRenderer.create('br34b', { perspective: 'black', showPieces: true });
+          boardB.render('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR');
+          const gridB = document.getElementById('br34b').querySelector('.board-grid');
+          const a1b = gridB.querySelector('[data-square="a1"]');
+          TestRunner.assert(a1b.innerHTML.includes('svg'), 'Black a1 should have piece');
+          boardB.destroy();
+        });
+
+        // BR-35: highlight classes add/remove
+        TestRunner.test('BR-35: highlight classes correctly added and removed', () => {
+          const container = makeContainer('br35');
+          const board = BoardRenderer.create('br35');
+          board.highlight('e4', 'correct');
+          const grid = document.getElementById('br35').querySelector('.board-grid');
+          const sq = grid.querySelector('[data-square="e4"]');
+          TestRunner.assert(sq.classList.contains('highlight-correct'), 'correct class');
+          board.highlight('e4', 'wrong');
+          TestRunner.assert(!sq.classList.contains('highlight-correct'), 'old class removed');
+          TestRunner.assert(sq.classList.contains('highlight-wrong'), 'wrong class');
+          board.clearHighlight();
+          TestRunner.assert(!sq.classList.contains('highlight-wrong'), 'cleared');
+          board.destroy();
+        });
+
+        // BR-36: mobile display check (basic structure)
+        TestRunner.test('BR-36: board structure is mobile-friendly', () => {
+          const container = makeContainer('br36');
+          const board = BoardRenderer.create('br36', { squareSize: 36 });
+          const wrapper = document.getElementById('br36').querySelector('.board-wrapper');
+          TestRunner.assert(wrapper !== null, 'Wrapper should exist');
+          const grid = wrapper.querySelector('.board-grid');
+          TestRunner.assert(grid !== null, 'Grid should exist');
+          // Verify grid does not exceed reasonable mobile width (36*8+4=292)
+          TestRunner.assert(grid.style.width.indexOf('292') !== -1, 'Grid width should be 292px for squareSize 36');
+          board.destroy();
+        });
+      });
+
+      TestRunner.run();
+    })();
+  </script>
+</body>
+</html>

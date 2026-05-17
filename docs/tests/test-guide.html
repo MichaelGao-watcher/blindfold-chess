@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Test GuideModule</title>
+  <style>
+    body { font-family: monospace; margin: 20px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .hidden { display: none !important; }
+    .mode-card { padding: 10px; margin: 5px; border: 1px solid #ccc; cursor: pointer; }
+    .back-btn { padding: 5px 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="test-results"></div>
+
+  <!-- Minimal DOM matching production structure -->
+  <div class="screen active" id="startScreen">Start</div>
+
+  <div class="screen hidden" id="guideScreen">
+    <button class="back-btn"><span>Back</span></button>
+    <div class="brand">
+      <h1 data-i18n="guideTitle">Getting Started</h1>
+      <p data-i18n="guideSubtitle">Pick where you want to begin.</p>
+    </div>
+    <div class="modes">
+      <div class="mode-card">
+        <div class="mode-title" data-i18n="guideBasics">Getting Caught Up</div>
+        <div class="mode-desc" data-i18n="guideBasicsDesc">I have no idea what I'm doing.</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-title" data-i18n="guidePractice">Practice</div>
+        <div class="mode-desc" data-i18n="guidePracticeDesc">Jump straight into a practice game.</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-title" data-i18n="guideExit">I'm done with it</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="basicsScreen">
+    <button class="back-btn"><span>Back</span></button>
+    <div class="brand">
+      <h1 data-i18n="basicsTitle">Basics</h1>
+      <p data-i18n="basicsSubtitle">Everything you need to get started.</p>
+    </div>
+    <div class="modes" style="text-align:left;gap:1.2rem;">
+      <div>
+        <p data-i18n="basicsCoords">Board Coordinates</p>
+        <p data-i18n="basicsCoordsDesc">A chessboard has 8 files...</p>
+        <p data-i18n="basicsNotation">Algebraic Notation</p>
+        <p data-i18n="basicsNotationDesc">Moves are written using algebraic notation...</p>
+        <p data-i18n="basicsBlindfold">Blindfold Chess</p>
+        <p data-i18n="basicsBlindfoldDesc">In blindfold chess, you play without seeing the board...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="difficultyScreen">Difficulty</div>
+
+  <script src="../../js/test-runner.js"></script>
+  <script src="../../js/guide.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    // Synchronise requestAnimationFrame for deterministic tests
+    var origRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = function(fn) { fn(); return 0; };
+
+    function resetScreens() {
+      document.querySelectorAll('.screen').forEach(function(s) {
+        s.classList.remove('active');
+        s.classList.add('hidden');
+      });
+      document.getElementById('startScreen').classList.remove('hidden');
+      document.getElementById('startScreen').classList.add('active');
+    }
+
+    function clickElement(el) {
+      if (!el) throw new Error('Element not found');
+      var ev = new Event('click', { bubbles: true });
+      el.dispatchEvent(ev);
+    }
+
+    function isActive(id) {
+      var el = document.getElementById(id);
+      return el && el.classList.contains('active') && !el.classList.contains('hidden');
+    }
+
+    function isHidden(id) {
+      var el = document.getElementById(id);
+      return !el || el.classList.contains('hidden');
+    }
+
+    TestRunner.suite('GuideModule API', function() {
+      TestRunner.test('GuideModule exposed on window', function() {
+        TestRunner.assert(typeof window.GuideModule === 'object', 'GuideModule not exposed');
+      });
+      TestRunner.test('init is a function', function() {
+        TestRunner.assert(typeof window.GuideModule.init === 'function', 'init not a function');
+      });
+      TestRunner.test('showSection is a function', function() {
+        TestRunner.assert(typeof window.GuideModule.showSection === 'function', 'showSection not a function');
+      });
+    });
+
+    TestRunner.suite('GuideModule.showSection navigation', function() {
+      TestRunner.test('showSection(menu) shows guideScreen', function() {
+        resetScreens();
+        window.GuideModule.showSection('menu');
+        TestRunner.assert(isActive('guideScreen'), 'guideScreen should be active');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('showSection(guide) shows guideScreen', function() {
+        resetScreens();
+        window.GuideModule.showSection('guide');
+        TestRunner.assert(isActive('guideScreen'), 'guideScreen should be active');
+      });
+
+      TestRunner.test('showSection(basics) shows basicsScreen', function() {
+        resetScreens();
+        window.GuideModule.showSection('basics');
+        TestRunner.assert(isActive('basicsScreen'), 'basicsScreen should be active');
+        TestRunner.assert(isHidden('guideScreen'), 'guideScreen should be hidden');
+      });
+
+      TestRunner.test('showSection(start) shows startScreen', function() {
+        resetScreens();
+        window.GuideModule.showSection('menu');
+        window.GuideModule.showSection('start');
+        TestRunner.assert(isActive('startScreen'), 'startScreen should be active');
+        TestRunner.assert(isHidden('guideScreen'), 'guideScreen should be hidden');
+      });
+
+      TestRunner.test('showSection(difficulty) shows difficultyScreen', function() {
+        resetScreens();
+        window.GuideModule.showSection('difficulty');
+        TestRunner.assert(isActive('difficultyScreen'), 'difficultyScreen should be active');
+        TestRunner.assert(isHidden('startScreen'), 'startScreen should be hidden');
+      });
+
+      TestRunner.test('showSection(unknown) returns false', function() {
+        var result = window.GuideModule.showSection('unknown');
+        TestRunner.assertEqual(result, false);
+      });
+    });
+
+    TestRunner.suite('GuideModule button clicks', function() {
+      TestRunner.test('guide back button navigates to start', function() {
+        resetScreens();
+        window.GuideModule.init();
+        window.GuideModule.showSection('menu');
+        var backBtn = document.getElementById('guideScreen').querySelector('.back-btn');
+        clickElement(backBtn);
+        TestRunner.assert(isActive('startScreen'), 'startScreen should be active after back');
+        TestRunner.assert(isHidden('guideScreen'), 'guideScreen should be hidden after back');
+      });
+
+      TestRunner.test('basics back button navigates to guide menu', function() {
+        resetScreens();
+        window.GuideModule.init();
+        window.GuideModule.showSection('basics');
+        var backBtn = document.getElementById('basicsScreen').querySelector('.back-btn');
+        clickElement(backBtn);
+        TestRunner.assert(isActive('guideScreen'), 'guideScreen should be active after back');
+        TestRunner.assert(isHidden('basicsScreen'), 'basicsScreen should be hidden after back');
+      });
+
+      TestRunner.test('basics card navigates to basics', function() {
+        resetScreens();
+        window.GuideModule.init();
+        window.GuideModule.showSection('menu');
+        var card = document.getElementById('guideScreen').querySelectorAll('.mode-card')[0];
+        clickElement(card);
+        TestRunner.assert(isActive('basicsScreen'), 'basicsScreen should be active');
+        TestRunner.assert(isHidden('guideScreen'), 'guideScreen should be hidden');
+      });
+
+      TestRunner.test('practice card navigates to difficulty', function() {
+        resetScreens();
+        window.GuideModule.init();
+        window.GuideModule.showSection('menu');
+        var card = document.getElementById('guideScreen').querySelectorAll('.mode-card')[1];
+        clickElement(card);
+        TestRunner.assert(isActive('difficultyScreen'), 'difficultyScreen should be active');
+        TestRunner.assert(isHidden('guideScreen'), 'guideScreen should be hidden');
+      });
+    });
+
+    TestRunner.suite('GuideModule content rendering', function() {
+      TestRunner.test('guide menu texts render in Chinese', function() {
+        localStorage.setItem('lang', 'zh');
+        resetScreens();
+        window.GuideModule.showSection('menu');
+        var title = document.querySelector('#guideScreen [data-i18n="guideTitle"]');
+        TestRunner.assertEqual(title.textContent, '入门指南');
+      });
+
+      TestRunner.test('guide menu texts render in English', function() {
+        localStorage.setItem('lang', 'en');
+        resetScreens();
+        window.GuideModule.showSection('menu');
+        var title = document.querySelector('#guideScreen [data-i18n="guideTitle"]');
+        TestRunner.assertEqual(title.textContent, 'Getting Started');
+      });
+
+      TestRunner.test('basics content renders in Chinese', function() {
+        localStorage.setItem('lang', 'zh');
+        resetScreens();
+        window.GuideModule.showSection('basics');
+        var title = document.querySelector('#basicsScreen [data-i18n="basicsTitle"]');
+        TestRunner.assertEqual(title.textContent, '基础知识');
+        var coords = document.querySelector('#basicsScreen [data-i18n="basicsCoords"]');
+        TestRunner.assertEqual(coords.textContent, '棋盘坐标');
+      });
+
+      TestRunner.test('basics content renders in English', function() {
+        localStorage.setItem('lang', 'en');
+        resetScreens();
+        window.GuideModule.showSection('basics');
+        var title = document.querySelector('#basicsScreen [data-i18n="basicsTitle"]');
+        TestRunner.assertEqual(title.textContent, 'Basics');
+        var coords = document.querySelector('#basicsScreen [data-i18n="basicsCoords"]');
+        TestRunner.assertEqual(coords.textContent, 'Board Coordinates');
+      });
+    });
+
+    TestRunner.suite('GuideModule language switching', function() {
+      TestRunner.test('language switch updates guide menu texts', function() {
+        localStorage.setItem('lang', 'zh');
+        resetScreens();
+        window.GuideModule.showSection('menu');
+        var title = document.querySelector('#guideScreen [data-i18n="guideTitle"]');
+        TestRunner.assertEqual(title.textContent, '入门指南');
+
+        localStorage.setItem('lang', 'en');
+        window.GuideModule.showSection('menu');
+        TestRunner.assertEqual(title.textContent, 'Getting Started');
+      });
+
+      TestRunner.test('language switch updates basics texts', function() {
+        localStorage.setItem('lang', 'zh');
+        resetScreens();
+        window.GuideModule.showSection('basics');
+        var title = document.querySelector('#basicsScreen [data-i18n="basicsTitle"]');
+        TestRunner.assertEqual(title.textContent, '基础知识');
+
+        localStorage.setItem('lang', 'en');
+        window.GuideModule.showSection('basics');
+        TestRunner.assertEqual(title.textContent, 'Basics');
+      });
+    });
+
+    TestRunner.suite('Global pollution check', function() {
+      TestRunner.test('no unexpected globals leaked', function() {
+        TestRunner.assert(typeof window._i18n === 'undefined', '_i18n leaked');
+        TestRunner.assert(typeof window._t === 'undefined', '_t leaked');
+        TestRunner.assert(typeof window._getScreen === 'undefined', '_getScreen leaked');
+        TestRunner.assert(typeof window._showScreen === 'undefined', '_showScreen leaked');
+        TestRunner.assert(typeof window._hideScreen === 'undefined', '_hideScreen leaked');
+        TestRunner.assert(typeof window._updateGuideTexts === 'undefined', '_updateGuideTexts leaked');
+        TestRunner.assert(typeof window._exitApp === 'undefined', '_exitApp leaked');
+      });
+    });
+
+    TestRunner.run().then(function(result) {
+      // restore raf
+      window.requestAnimationFrame = origRaf;
+    });
+  })();
+  </script>
+</body>
+</html>

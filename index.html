@@ -42,15 +42,19 @@
             <p data-i18n="tagline">Play chess without seeing the board.</p>
         </div>
         <div class="modes">
-            <div class="mode-card" onclick="showDifficulty()">
+            <div class="mode-card" id="modeBlindfold">
                 <div class="mode-title" data-i18n="modeBlindfold">Blindfold Practice</div>
                 <div class="mode-desc" data-i18n="modeBlindfoldDesc">Practice blindfold chess against the Stockfish engine at your chosen level.</div>
             </div>
-            <div class="mode-card" onclick="selectMode('coordinate')">
+            <div class="mode-card" id="modeCoordinate">
                 <div class="mode-title" data-i18n="modeCoordinate">Coordinate Practice</div>
                 <div class="mode-desc" data-i18n="modeCoordinateDesc">Train your board vision by identifying squares and calling out coordinates.</div>
             </div>
-            <div class="mode-card" onclick="showGuide()">
+            <div class="mode-card" id="modeReplay">
+                <div class="mode-title" data-i18n="modeReplay">Blindfold Replay</div>
+                <div class="mode-desc" data-i18n="modeReplayDesc">Review classic games and practice blindfold replay.</div>
+            </div>
+            <div class="mode-card" id="modeGuide">
                 <div class="mode-title" data-i18n="modeGuide">Wait. I don't even know how…</div>
                 <div class="mode-desc" data-i18n="modeGuideDesc">it's fine. Try this</div>
             </div>
@@ -91,7 +95,7 @@
     </div>
 
     <div class="screen hidden" id="guideScreen">
-        <button class="back-btn" onclick="showStartFromGuide()">
+        <button class="back-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             <span data-i18n="back">Back</span>
         </button>
@@ -100,22 +104,22 @@
             <p data-i18n="guideSubtitle">Pick where you want to begin.</p>
         </div>
         <div class="modes">
-            <div class="mode-card" onclick="showBasics()">
+            <div class="mode-card">
                 <div class="mode-title" data-i18n="guideBasics">Getting Caught Up</div>
                 <div class="mode-desc" data-i18n="guideBasicsDesc">I have no idea what I'm doing. I need to start from the basics.</div>
             </div>
-            <div class="mode-card" onclick="showDifficulty()">
+            <div class="mode-card">
                 <div class="mode-title" data-i18n="guidePractice">Practice</div>
                 <div class="mode-desc" data-i18n="guidePracticeDesc">Jump straight into a practice game against Stockfish.</div>
             </div>
-            <div class="mode-card" onclick="exitApp()">
+            <div class="mode-card">
                 <div class="mode-title" data-i18n="guideExit">I'm done with it</div>
             </div>
         </div>
     </div>
 
     <div class="screen hidden" id="basicsScreen">
-        <button class="back-btn" onclick="showGuideFromBasics()">
+        <button class="back-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             <span data-i18n="back">Back</span>
         </button>
@@ -139,7 +143,7 @@
     </div>
 
     <div class="screen hidden" id="coordinateScreen">
-        <button class="back-btn" onclick="showStartFromCoordinate()">
+        <button class="back-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
             <span data-i18n="back">Back</span>
         </button>
@@ -149,6 +153,7 @@
         </div>
         <div id="coordScore" style="font-size:1.1rem;font-weight:600;color:var(--accent);display:none;">Score: 0 / 0</div>
         <div id="coordPrompt" style="font-size:1.3rem;font-weight:700;color:var(--text-primary);text-align:center;min-height:2rem;display:none;"></div>
+        <div id="coordTimer" style="font-size:1.4rem;font-weight:700;color:var(--accent);display:none;min-height:2rem;text-align:center;"></div>
         <div class="board-panel" style="max-height:420px;opacity:1;margin:0;">
             <div class="board-wrapper" id="coordinateBoardWrapper">
                 <div class="board-row-labels"><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
@@ -160,16 +165,33 @@
         </div>
         <div id="coordInputArea" style="width:100%;display:none;gap:0.6rem;justify-content:center;align-items:center;">
             <input type="text" id="coordInput" placeholder="e.g. e4" style="padding:0.6rem 1rem;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);font-size:1rem;font-family:inherit;width:120px;text-align:center;" />
-            <button onclick="submitCoordAnswer()" data-i18n="go">Go</button>
+            <button id="coordInputGoBtn" data-i18n="go">Go</button>
         </div>
         <div id="coordFeedback" style="font-size:0.95rem;text-align:center;min-height:1.5rem;color:var(--text-secondary);"></div>
         <div class="game-actions" id="coordSetupActions">
-            <button onclick="startCoordinatePractice('white')" data-i18n="playAsWhite">Play as White</button>
-            <button onclick="startCoordinatePractice('black')" data-i18n="playAsBlack">Play as Black</button>
+            <button data-i18n="playAsWhite">Play as White</button>
+            <button data-i18n="playAsBlack">Play as Black</button>
+        </div>
+        <div class="game-actions" id="coordTimerPresets" style="gap:0.4rem;flex-wrap:wrap;">
+            <span style="width:100%;text-align:center;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.2rem;">Timer</span>
+            <button id="coordTimer30">30s</button>
+            <button id="coordTimer60">60s</button>
+            <button id="coordTimer120">120s</button>
+            <button id="coordTimer0">∞</button>
         </div>
         <div class="game-actions" id="coordModeActions" style="display:none;">
-            <button onclick="setCoordMode('a')" id="btnModeA" data-i18n="modeA">Mode A: Find Square</button>
-            <button onclick="setCoordMode('b')" id="btnModeB" data-i18n="modeB">Mode B: Name Square</button>
+            <button id="btnModeA" data-i18n="modeA">Mode A: Find Square</button>
+            <button id="btnModeB" data-i18n="modeB">Mode B: Name Square</button>
+        </div>
+        <div class="result-overlay" id="coordResultOverlay">
+            <div class="result-card">
+                <div class="result-title" id="coordResultTitle">Practice Finished</div>
+                <div class="result-msg" id="coordResultMsg"></div>
+                <div class="game-actions" style="margin-top:0.5rem;">
+                    <button id="coordRestartBtn">Again</button>
+                    <button id="coordBackBtn" style="background:var(--surface);color:var(--text-primary);">Back</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -182,7 +204,7 @@
 
     <div class="screen hidden" id="gameScreen">
         <div class="game-header">
-            <button class="back-btn" onclick="showStartFromGame()">
+            <button class="back-btn" id="gameBackBtn">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 Back
             </button>
@@ -190,7 +212,7 @@
                 <span class="difficulty-badge" id="diffBadge">Medium</span>
                 <span class="engine-status" id="engineStatus">Ready</span>
             </div>
-            <button class="board-toggle" onclick="toggleBoard()" aria-label="Toggle board">
+            <button class="board-toggle" id="boardToggleBtn" aria-label="Toggle board">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="2" width="20" height="20" rx="2"></rect><path d="M2 12h20M12 2v20"></path>
                 </svg>
@@ -213,12 +235,12 @@
 
         <div class="game-input">
             <input type="text" id="moveInput" placeholder="e.g. e4, Nf3, O-O" autocomplete="off" data-i18n="movePlaceholder" />
-            <button onclick="submitMove()" data-i18n="go">Go</button>
+            <button id="moveSubmitBtn" data-i18n="go">Go</button>
         </div>
 
         <div class="game-actions">
-            <button onclick="newGame()" data-i18n="newGame">New Game</button>
-            <button onclick="resign()" data-i18n="resign">Resign</button>
+            <button id="newGameBtn" data-i18n="newGame">New Game</button>
+            <button id="resignBtn" data-i18n="resign">Resign</button>
         </div>
     </div>
 
@@ -228,14 +250,19 @@
             <div class="result-msg" id="resultMsg">White wins by checkmate!</div>
             <div class="result-pgn-wrap">
                 <pre id="resultPgn"></pre>
-                <button class="copy-btn" onclick="copyPgn()">📋 复制 PGN</button>
+                <button class="copy-btn" id="copyPgnBtn">📋 复制 PGN</button>
             </div>
-            <button onclick="hideResult(); newGame();" data-i18n="playAgain">Play Again</button>
+            <button id="playAgainBtn" data-i18n="playAgain">Play Again</button>
         </div>
     </div>
     <script src="chess.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/welcome.js"></script>
+    <script src="js/guide.js"></script>
     <script src="js/engine.js"></script>
+    <script src="js/board-renderer.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/blindfold.js"></script>
     <script src="js/game.js"></script>
     <script src="js/coordinate.js"></script>
     <script src="js/main.js"></script>
